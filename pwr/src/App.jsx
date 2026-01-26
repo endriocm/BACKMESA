@@ -1,34 +1,86 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+﻿import { useEffect, useMemo, useState } from 'react'
+import Sidebar from './components/Sidebar'
+import Topbar from './components/Topbar'
+import ToastProvider from './components/ToastProvider'
+import { useHashRoute } from './hooks/useHashRoute'
+import { routeTitles } from './data/navigation'
+import Dashboard from './pages/Dashboard'
+import RevenueStructured from './pages/RevenueStructured'
+import RevenueBovespa from './pages/RevenueBovespa'
+import RevenueBmf from './pages/RevenueBmf'
+import RevenueManual from './pages/RevenueManual'
+import Vencimento from './pages/Vencimento'
+import Tags from './pages/Tags'
+import NotFound from './pages/NotFound'
+
+const routeMap = {
+  '/': Dashboard,
+  '/receita/estruturadas': RevenueStructured,
+  '/receita/bovespa': RevenueBovespa,
+  '/receita/bmf': RevenueBmf,
+  '/receita/manual': RevenueManual,
+  '/vencimento': Vencimento,
+  '/tags': Tags,
+}
+
+const crumbLookup = {
+  receita: 'Receita',
+  estruturadas: 'Estruturadas',
+  bovespa: 'Bovespa',
+  bmf: 'BMF',
+  manual: 'Manual',
+  vencimento: 'Vencimento',
+  tags: 'Tags e Vinculos',
+}
+
+const resolvePath = (path) => {
+  if (path === '/receita') return '/receita/estruturadas'
+  return path
+}
 
 function App() {
-  const [count, setCount] = useState(0)
+  const { path, navigate } = useHashRoute('/')
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const resolvedPath = resolvePath(path)
+  const CurrentPage = routeMap[resolvedPath] || NotFound
+
+  useEffect(() => {
+    if (path !== resolvedPath) {
+      navigate(resolvedPath)
+    }
+  }, [path, resolvedPath, navigate])
+
+  const title = routeTitles[resolvedPath] || 'Painel'
+  const breadcrumbs = useMemo(() => {
+    if (resolvedPath === '/') return ['Dashboard']
+    return resolvedPath
+      .split('/')
+      .filter(Boolean)
+      .map((segment) => crumbLookup[segment] || segment)
+  }, [resolvedPath])
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <ToastProvider>
+      <div className="app-shell">
+        <Sidebar
+          currentPath={resolvedPath}
+          onNavigate={() => setSidebarOpen(false)}
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+        />
+        <div className="app-main">
+          <Topbar
+            title={title}
+            breadcrumbs={breadcrumbs}
+            onToggleSidebar={() => setSidebarOpen(true)}
+            currentPath={resolvedPath}
+          />
+          <main className="page-content">
+            <CurrentPage />
+          </main>
+        </div>
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    </ToastProvider>
   )
 }
 
