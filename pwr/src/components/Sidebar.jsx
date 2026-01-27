@@ -7,7 +7,7 @@ const Sidebar = ({ currentPath, onNavigate, isOpen, onClose }) => {
       <div className="sidebar-header">
         <div className="brand">
           <span className="brand-mark">PWR</span>
-          <span className="brand-name">endrio s2s2</span>
+          <span className="brand-name">Endrio</span>
         </div>
         <button className="icon-btn ghost mobile-only" onClick={onClose} aria-label="Fechar menu">
           <Icon name="close" size={18} />
