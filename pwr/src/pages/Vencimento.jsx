@@ -75,6 +75,7 @@ const toArrayBuffer = (data) => {
 
 const spotCache = new Map()
 const SPOT_CONCURRENCY = 8
+const PAGE_SIZE = 15
 
 const mapWithConcurrency = async (items, limit, mapper) => {
   const results = new Array(items.length)
@@ -102,6 +103,12 @@ const formatUpdateError = (error, prefix = 'Falha ao atualizar') => {
   const detail = error?.detail || error?.message || 'erro desconhecido'
   const providerLabel = provider ? ` (${provider}${status ? ` ${status}` : ''})` : ''
   return `${prefix}${providerLabel}: ${detail}`
+}
+
+const getResultTone = (value) => {
+  const number = Number(value)
+  if (!Number.isFinite(number) || number === 0) return ''
+  return number > 0 ? 'text-positive' : 'text-negative'
 }
 
 const fetchSpotPrice = async (ticker, { force = false } = {}) => {
@@ -171,6 +178,7 @@ const Vencimento = () => {
   const [pendingFile, setPendingFile] = useState(null)
   const [isParsing, setIsParsing] = useState(false)
   const [isRefreshingAll, setIsRefreshingAll] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
   const fileInputRef = useRef(null)
 
   useEffect(() => {
@@ -306,7 +314,16 @@ const Vencimento = () => {
       })
   }, [filters, operations, marketMap, overrides])
 
-  const visibleRows = useMemo(() => rows.slice(0, 20), [rows])
+  const pageCount = useMemo(() => Math.max(1, Math.ceil(rows.length / PAGE_SIZE)), [rows.length])
+  useEffect(() => {
+    setCurrentPage((prev) => Math.min(Math.max(prev, 1), pageCount))
+  }, [pageCount])
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [filters, operations])
+
+  const pageStart = (currentPage - 1) * PAGE_SIZE
+  const visibleRows = useMemo(() => rows.slice(pageStart, pageStart + PAGE_SIZE), [rows, pageStart])
 
   const totals = useMemo(() => {
     const total = rows.length
@@ -384,7 +401,11 @@ const Vencimento = () => {
       {
         key: 'resultado',
         label: 'Resultado $',
-        render: (row) => formatCurrency(row.result.financeiroFinal),
+        render: (row) => (
+          <span className={getResultTone(row.result.financeiroFinal)}>
+            {formatCurrency(row.result.financeiroFinal)}
+          </span>
+        ),
       },
       {
         key: 'vendaAtivo',
@@ -394,7 +415,11 @@ const Vencimento = () => {
       {
         key: 'resultadoPercent',
         label: 'Resultado %',
-        render: (row) => `${(row.result.percent * 100).toFixed(2)}%`,
+        render: (row) => (
+          <span className={getResultTone(row.result.percent)}>
+            {(row.result.percent * 100).toFixed(2)}%
+          </span>
+        ),
       },
       {
         key: 'debito',
@@ -706,16 +731,47 @@ const Vencimento = () => {
           </div>
         ) : null}
         <div className="table-actions">
-          <button
-            className="btn btn-secondary"
-            type="button"
-            onClick={handleRefreshAll}
-            disabled={isRefreshingAll}
-          >
-            <Icon name="sync" size={16} />
-            {isRefreshingAll ? 'Atualizando...' : 'Atualizar spots'}
-          </button>
-          <span className="muted">Mostrando 20 de {rows.length}</span>
+          <div className="table-actions-left">
+            <button
+              className="btn btn-secondary"
+              type="button"
+              onClick={handleRefreshAll}
+              disabled={isRefreshingAll}
+            >
+              <Icon name="sync" size={16} />
+              {isRefreshingAll ? 'Atualizando...' : 'Atualizar spots'}
+            </button>
+            <span className="muted">Mostrando {visibleRows.length} de {rows.length}</span>
+          </div>
+          <div className="table-pagination">
+            <button
+              className="btn btn-secondary"
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              disabled={currentPage <= 1}
+            >
+              Anterior
+            </button>
+            <select
+              className="input"
+              value={currentPage}
+              onChange={(event) => setCurrentPage(Number(event.target.value))}
+            >
+              {Array.from({ length: pageCount }, (_, index) => index + 1).map((page) => (
+                <option key={page} value={page}>
+                  Pagina {page} de {pageCount}
+                </option>
+              ))}
+            </select>
+            <button
+              className="btn btn-secondary"
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, pageCount))}
+              disabled={currentPage >= pageCount}
+            >
+              Proxima
+            </button>
+          </div>
         </div>
         <DataTable
           rows={visibleRows}
