@@ -1,12 +1,18 @@
-﻿import { useCallback, useMemo, useState } from 'react'
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import PageHeader from '../components/PageHeader'
 import DataTable from '../components/DataTable'
 import Badge from '../components/Badge'
 import Icon from '../components/Icons'
-import Modal from '../components/Modal'
-import Tabs from '../components/Tabs'
+import ReportModal from '../components/ReportModal'
+import OverrideModal from '../components/OverrideModal'
 import { vencimentos, statusConfig } from '../data/vencimento'
-import { formatCurrency, formatDate } from '../utils/format'
+import { formatCurrency, formatDate, formatNumber } from '../utils/format'
+import { fetchYahooMarketData } from '../services/marketData'
+import { computeBarrierStatus, computeResult } from '../services/settlement'
+import { clearOverride, loadOverrides, saveOverrides, updateOverride } from '../services/overrides'
+import { parseWorkbook } from '../services/excel'
+import { exportReportPdf } from '../services/pdf'
+import { useToast } from '../hooks/useToast'
 
 const getStatus = (date) => {
   const target = new Date(date)
@@ -16,14 +22,105 @@ const getStatus = (date) => {
   return { key: 'ok', days: diff }
 }
 
+const getBarrierBadge = (status) => {
+  if (!status) return { label: 'N/A', tone: 'cyan' }
+  const high = status.high
+  const low = status.low
+  if (high && low) return { label: 'Alta + Baixa', tone: 'red' }
+  if (high) return { label: 'Bateu alta', tone: 'amber' }
+  if (low) return { label: 'Bateu baixa', tone: 'amber' }
+  if (high === false || low === false) return { label: 'Nao bateu', tone: 'green' }
+  return { label: 'N/A', tone: 'cyan' }
+}
+
+const buildCopySummary = (row) => {
+  return [
+    `Cliente: ${row.cliente}`,
+    `Ativo: ${row.ativo}`,
+    `Estrutura: ${row.estrutura}`,
+    `Resultado: ${formatCurrency(row.result.financeiroFinal)}`,
+    `Barreira: ${getBarrierBadge(row.barrierStatus).label}`,
+  ].join('\n')
+}
+
 const Vencimento = () => {
+  const { notify } = useToast()
   const [filters, setFilters] = useState({ search: '', broker: '', assessor: '', cliente: '', status: '' })
-  const [selected, setSelected] = useState(null)
-  const [tab, setTab] = useState('resumo')
+  const [operations, setOperations] = useState(vencimentos)
+  const [marketMap, setMarketMap] = useState({})
+  const [overrides, setOverrides] = useState(() => loadOverrides())
+  const [selectedReport, setSelectedReport] = useState(null)
+  const [selectedOverride, setSelectedOverride] = useState(null)
+  const [overrideDraft, setOverrideDraft] = useState({ high: 'auto', low: 'auto' })
+  const [folderLabel, setFolderLabel] = useState('Nenhuma pasta vinculada')
+  const fileInputRef = useRef(null)
+
+  useEffect(() => {
+    saveOverrides(overrides)
+  }, [overrides])
+
+  useEffect(() => {
+    let active = true
+    const loadMarket = async () => {
+      const next = {}
+      for (const operation of operations) {
+        if (!operation.ativo || !operation.dataRegistro || !operation.vencimento) continue
+        try {
+          const market = await fetchYahooMarketData({
+            symbol: operation.ativo,
+            startDate: operation.dataRegistro,
+            endDate: operation.vencimento,
+          })
+          next[operation.id] = market
+        } catch {
+          next[operation.id] = {
+            close: operation.spotInicial,
+            high: null,
+            low: null,
+            dividendsTotal: 0,
+            lastUpdate: Date.now(),
+            source: 'fallback',
+          }
+        }
+      }
+      if (active) setMarketMap(next)
+    }
+    loadMarket()
+    return () => {
+      active = false
+    }
+  }, [operations])
+
+  const handleRefreshData = useCallback(async (operation) => {
+    try {
+      const market = await fetchYahooMarketData({
+        symbol: operation.ativo,
+        startDate: operation.dataRegistro,
+        endDate: operation.vencimento,
+      })
+      setMarketMap((prev) => ({ ...prev, [operation.id]: market }))
+      notify('Dados atualizados.', 'success')
+    } catch {
+      notify('Falha ao atualizar dados.', 'warning')
+    }
+  }, [notify])
 
   const rows = useMemo(() => {
-    return vencimentos
-      .map((entry) => ({ ...entry, status: getStatus(entry.vencimento) }))
+    return operations
+      .map((operation) => {
+        const market = marketMap[operation.id]
+        const override = overrides[operation.id] || { high: 'auto', low: 'auto' }
+        const barrierStatus = computeBarrierStatus(operation, market, override)
+        const result = computeResult(operation, market, barrierStatus)
+        return {
+          ...operation,
+          market,
+          override,
+          barrierStatus,
+          result,
+          status: getStatus(operation.vencimento),
+        }
+      })
       .filter((entry) => {
         const query = filters.search.toLowerCase()
         if (query && !`${entry.cliente} ${entry.ativo} ${entry.estrutura}`.toLowerCase().includes(query)) return false
@@ -33,7 +130,7 @@ const Vencimento = () => {
         if (filters.status && entry.status.key !== filters.status) return false
         return true
       })
-  }, [filters])
+  }, [filters, operations, marketMap, overrides])
 
   const totals = useMemo(() => {
     const total = rows.length
@@ -42,24 +139,121 @@ const Vencimento = () => {
     return { total, criticos, alertas }
   }, [rows])
 
+  const handleReportClick = useCallback((row) => {
+    setSelectedReport(row)
+  }, [])
+
+  const handleOverrideClick = useCallback((row) => {
+    const current = overrides[row.id] || { high: 'auto', low: 'auto' }
+    setOverrideDraft(current)
+    setSelectedOverride(row)
+  }, [overrides])
+
   const columns = useMemo(
     () => [
-      { key: 'vencimento', label: 'Data', render: (row) => formatDate(row.vencimento) },
+      {
+        key: 'datas',
+        label: 'Datas',
+        render: (row) => (
+          <div className="cell-stack">
+            <strong>{formatDate(row.dataRegistro)}</strong>
+            <small>{formatDate(row.vencimento)}</small>
+          </div>
+        ),
+      },
+      {
+        key: 'cliente',
+        label: 'Cliente',
+        render: (row) => (
+          <div className="cell-stack">
+            <strong>{row.cliente}</strong>
+            <small>{row.assessor}</small>
+          </div>
+        ),
+      },
       { key: 'ativo', label: 'Ativo' },
       { key: 'estrutura', label: 'Estrutura' },
-      { key: 'cliente', label: 'Cliente' },
       {
-        key: 'status',
-        label: 'Status',
+        key: 'spot',
+        label: 'Spot',
+        render: (row) => (
+          <div className="cell-stack">
+            <strong>{formatNumber(row.spotInicial)}</strong>
+            <small>{formatNumber(row.result.spotFinal)}</small>
+          </div>
+        ),
+      },
+      {
+        key: 'barreira',
+        label: 'Barreira',
         render: (row) => {
-          const config = statusConfig[row.status.key]
-          return <Badge tone={config.tone}>{config.label}</Badge>
+          const badge = getBarrierBadge(row.barrierStatus)
+          const manual = row.override?.high !== 'auto' || row.override?.low !== 'auto'
+          return (
+            <div className="cell-stack">
+              <Badge tone={badge.tone}>{badge.label}</Badge>
+              {manual ? <small>Manual ligado</small> : <small>Automatico</small>}
+            </div>
+          )
         },
       },
-      { key: 'barreira', label: 'Barreira' },
-      { key: 'cupom', label: 'Cupom' },
+      {
+        key: 'resultado',
+        label: 'Resultado',
+        render: (row) => (
+          <div className="cell-stack">
+            <strong>{formatCurrency(row.result.financeiroFinal)}</strong>
+            <small>{(row.result.percent * 100).toFixed(2)}%</small>
+          </div>
+        ),
+      },
+      {
+        key: 'dividendos',
+        label: 'Dividendos',
+        render: (row) => formatCurrency(row.result.dividends),
+      },
+      {
+        key: 'cupom',
+        label: 'Cupom/Rebate',
+        render: (row) => (
+          <div className="cell-stack">
+            <small>Cupom {row.cupom || 'N/A'}</small>
+            <small>Rebate {formatCurrency(row.result.rebateTotal)}</small>
+          </div>
+        ),
+      },
+      {
+        key: 'acoes',
+        label: 'Acoes',
+        render: (row) => (
+          <div className="row-actions">
+            <button
+              className="icon-btn"
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation()
+                handleReportClick(row)
+              }}
+              aria-label="Ver relatorio"
+            >
+              <Icon name="eye" size={16} />
+            </button>
+            <button
+              className="icon-btn"
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation()
+                handleOverrideClick(row)
+              }}
+              aria-label="Override manual"
+            >
+              <Icon name="sliders" size={16} />
+            </button>
+          </div>
+        ),
+      },
     ],
-    [],
+    [handleReportClick, handleOverrideClick],
   )
 
   const chips = [
@@ -69,13 +263,90 @@ const Vencimento = () => {
     { key: 'status', label: filters.status },
   ].filter((chip) => chip.label)
 
-  const handleRowClick = useCallback(
-    (row) => {
-      setSelected(row)
-      setTab('resumo')
-    },
-    [setSelected, setTab],
-  )
+  const handlePickFolder = useCallback(async () => {
+    try {
+      if ('showDirectoryPicker' in window) {
+        const handle = await window.showDirectoryPicker()
+        setFolderLabel(handle.name)
+        let pickedFile = null
+        for await (const entry of handle.values()) {
+          if (entry.kind === 'file' && entry.name.endsWith('.xlsx')) {
+            pickedFile = await entry.getFile()
+            break
+          }
+        }
+        if (!pickedFile) {
+          notify('Nenhuma planilha .xlsx encontrada.', 'warning')
+          return
+        }
+        const parsed = await parseWorkbook(pickedFile)
+        setOperations(parsed)
+        notify('Planilha importada com sucesso.', 'success')
+      } else {
+        fileInputRef.current?.click()
+      }
+    } catch {
+      notify('Selecao de pasta cancelada.', 'warning')
+    }
+  }, [notify])
+
+  const handleFileChange = async (event) => {
+    const files = Array.from(event.target.files || [])
+    const file = files.find((item) => item.name.endsWith('.xlsx'))
+    if (!file) {
+      notify('Selecione um arquivo .xlsx.', 'warning')
+      return
+    }
+    setFolderLabel(file.name)
+    try {
+      const parsed = await parseWorkbook(file)
+      setOperations(parsed)
+      notify('Planilha importada com sucesso.', 'success')
+    } catch {
+      notify('Falha ao importar planilha.', 'warning')
+    }
+  }
+
+  const handleExportPdf = (row) => {
+    const barrierBadge = getBarrierBadge(row.barrierStatus)
+    const payload = {
+      title: `Relatorio - ${row.cliente}`,
+      header: `${row.ativo} | ${row.estrutura} | ${formatDate(row.vencimento)}`,
+      summary: `<strong>${formatCurrency(row.result.financeiroFinal)}</strong> <span class=\"badge\">${barrierBadge.label}</span>`,
+      details: [
+        { label: 'Spot inicial', value: formatNumber(row.spotInicial) },
+        { label: 'Spot vencimento', value: formatNumber(row.result.spotFinal) },
+        { label: 'Quantidade', value: formatNumber(row.quantidade) },
+        { label: 'Custo total', value: formatCurrency(row.result.custoTotal) },
+        { label: 'Payoff opcoes', value: formatCurrency(row.result.payoff) },
+        { label: 'Dividendos', value: formatCurrency(row.result.dividends) },
+        { label: 'Cupom', value: formatCurrency(row.result.cupomTotal) },
+        { label: 'Rebates', value: formatCurrency(row.result.rebateTotal) },
+      ],
+      barriers: (row.barrierStatus?.list || []).map((item) => {
+        const direction = item.direction === 'high' ? 'Alta' : 'Baixa'
+        const hit = item.direction === 'high' ? row.barrierStatus?.high : row.barrierStatus?.low
+        return {
+          label: `${direction} (${item.barreiraTipo || 'N/A'})`,
+          value: `${item.barreiraValor} - ${hit == null ? 'N/A' : hit ? 'Bateu' : 'Nao bateu'}`,
+        }
+      }),
+      warnings: [
+        row.market?.source !== 'yahoo' ? 'Cotacao em fallback.' : null,
+        row.override?.high !== 'auto' || row.override?.low !== 'auto' ? 'Override manual aplicado.' : null,
+      ].filter(Boolean),
+    }
+    exportReportPdf(payload, `${row.cliente}_${row.ativo}_${row.vencimento}`)
+  }
+
+  const handleCopy = async (row) => {
+    try {
+      await navigator.clipboard.writeText(buildCopySummary(row))
+      notify('Resumo copiado.', 'success')
+    } catch {
+      notify('Nao foi possivel copiar.', 'warning')
+    }
+  }
 
   return (
     <div className="page">
@@ -89,6 +360,29 @@ const Vencimento = () => {
         ]}
         actions={[{ label: 'Gerar relatorio', icon: 'doc' }, { label: 'Exportar', icon: 'download', variant: 'btn-secondary' }]}
       />
+
+      <section className="panel">
+        <div className="panel-head">
+          <div>
+            <h3>Fonte de dados</h3>
+            <p className="muted">Vincule a pasta com a planilha de posicao para atualizar os calculos.</p>
+          </div>
+          <div className="panel-actions">
+            <button className="btn btn-secondary" type="button" onClick={handlePickFolder}>
+              <Icon name="link" size={16} />
+              Vincular pasta
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx"
+              onChange={handleFileChange}
+              hidden
+            />
+          </div>
+        </div>
+        <div className="muted">{folderLabel}</div>
+      </section>
 
       <section className="panel">
         <div className="panel-head">
@@ -141,7 +435,7 @@ const Vencimento = () => {
           rows={rows}
           columns={columns}
           emptyMessage="Nenhuma estrutura encontrada."
-          onRowClick={handleRowClick}
+          onRowClick={handleReportClick}
         />
       </section>
 
@@ -167,77 +461,33 @@ const Vencimento = () => {
         </div>
       </section>
 
-      <Modal
-        open={Boolean(selected)}
-        title={selected ? `${selected.ativo} - ${selected.estrutura}` : ''}
-        subtitle={selected ? `${selected.cliente} | ${formatDate(selected.vencimento)}` : ''}
-        onClose={() => setSelected(null)}
-      >
-        {selected ? (
-          <div>
-            <Tabs
-              tabs={[
-                { value: 'resumo', label: 'Resumo' },
-                { value: 'detalhes', label: 'Detalhes' },
-                { value: 'barreira', label: 'Barreira' },
-                { value: 'cupom', label: 'Cupom' },
-                { value: 'historico', label: 'Historico' },
-              ]}
-              active={tab}
-              onChange={setTab}
-            />
-            <div className="modal-grid">
-              <div className="modal-column">
-                <div className="modal-block">
-                  <h4>Status atual</h4>
-                  <Badge tone={statusConfig[selected.status.key].tone}>{statusConfig[selected.status.key].label}</Badge>
-                  <p className="muted">{Math.abs(selected.status.days)} dias para vencimento.</p>
-                </div>
-                <div className="modal-block">
-                  <h4>Dados principais</h4>
-                  <div className="definition-list">
-                    <div>
-                      <span>Cliente</span>
-                      <strong>{selected.cliente}</strong>
-                    </div>
-                    <div>
-                      <span>Assessor</span>
-                      <strong>{selected.assessor}</strong>
-                    </div>
-                    <div>
-                      <span>Broker</span>
-                      <strong>{selected.broker}</strong>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="modal-column">
-                <div className="modal-block">
-                  <h4>Parametros</h4>
-                  <div className="definition-list">
-                    <div>
-                      <span>Barreira</span>
-                      <strong>{selected.barreira}</strong>
-                    </div>
-                    <div>
-                      <span>Cupom</span>
-                      <strong>{selected.cupom}</strong>
-                    </div>
-                    <div>
-                      <span>P/L</span>
-                      <strong>{formatCurrency(selected.pl)}</strong>
-                    </div>
-                  </div>
-                </div>
-                <div className="modal-actions">
-                  <button className="btn btn-primary" type="button">Aplicar ajuste</button>
-                  <button className="btn btn-danger" type="button">Marcar vencido</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : null}
-      </Modal>
+      <ReportModal
+        open={Boolean(selectedReport)}
+        row={selectedReport}
+        onClose={() => setSelectedReport(null)}
+        onRefresh={() => selectedReport && handleRefreshData(selectedReport)}
+        onCopy={() => selectedReport && handleCopy(selectedReport)}
+        onExport={() => selectedReport && handleExportPdf(selectedReport)}
+      />
+
+      <OverrideModal
+        open={Boolean(selectedOverride)}
+        value={overrideDraft}
+        onClose={() => setSelectedOverride(null)}
+        onChange={setOverrideDraft}
+        onApply={() => {
+          if (!selectedOverride) return
+          setOverrides((prev) => updateOverride(prev, selectedOverride.id, overrideDraft))
+          notify('Override aplicado.', 'success')
+          setSelectedOverride(null)
+        }}
+        onReset={() => {
+          if (!selectedOverride) return
+          setOverrides((prev) => clearOverride(prev, selectedOverride.id))
+          notify('Override resetado.', 'success')
+          setSelectedOverride(null)
+        }}
+      />
     </div>
   )
 }

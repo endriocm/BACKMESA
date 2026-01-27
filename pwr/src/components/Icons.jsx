@@ -67,6 +67,24 @@
           <path d="m20 20-3.5-3.5" />
         </svg>
       )
+    case 'eye':
+      return (
+        <svg {...props}>
+          <path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6-10-6-10-6Z" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+      )
+    case 'sliders':
+      return (
+        <svg {...props}>
+          <path d="M4 6h10" />
+          <path d="M4 18h10" />
+          <path d="M14 6h6" />
+          <path d="M14 18h6" />
+          <circle cx="10" cy="6" r="2" />
+          <circle cx="10" cy="18" r="2" />
+        </svg>
+      )
     case 'filter':
       return (
         <svg {...props}>
