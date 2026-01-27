@@ -17,6 +17,9 @@ const getBarrierBadge = (status) => {
 const ReportModal = ({ open, onClose, row, onExport, onCopy, onRefresh }) => {
   if (!row) return null
 
+  const spotLabel = row.spotBase ?? row.spotInicial
+  const spotValue = spotLabel == null || Number.isNaN(Number(spotLabel)) ? '—' : formatNumber(spotLabel)
+
   const badge = getBarrierBadge(row.barrierStatus)
   const overrideManual = row.override?.high !== 'auto' || row.override?.low !== 'auto'
   const warnings = []
@@ -79,7 +82,7 @@ const ReportModal = ({ open, onClose, row, onExport, onCopy, onRefresh }) => {
           <div className="report-list">
             <div>
               <span>Spot</span>
-              <strong>{formatNumber(row.spotBase ?? row.spotInicial)}</strong>
+              <strong>{spotValue}</strong>
             </div>
             <div>
               <span>Quantidade</span>

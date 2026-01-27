@@ -18,11 +18,30 @@ const setCached = (key, data) => {
   return data
 }
 
+const parseApiError = async (response) => {
+  let payload = null
+  try {
+    payload = await response.json()
+  } catch {
+    payload = null
+  }
+  const status = payload?.status || response.status
+  const provider = payload?.source || payload?.provider || 'desconhecido'
+  const detail = payload?.error || payload?.message || 'Falha ao buscar cotacao'
+  const error = new Error(detail)
+  error.status = status
+  error.provider = provider
+  error.detail = detail
+  error.payload = payload
+  return error
+}
+
 export const normalizeYahooSymbol = (ticker) => {
   if (!ticker) return ''
-  if (ticker.includes('.')) return ticker
-  if (/^[A-Z]{4}\d$/.test(ticker)) return `${ticker}.SA`
-  return ticker
+  const raw = String(ticker).trim().toUpperCase()
+  if (raw.includes('.')) return raw
+  if (/^[A-Z]{4,6}\d{1,2}[A-Z]?$/.test(raw)) return `${raw}.SA`
+  return raw
 }
 
 const fetchYahooViaApi = async ({ symbol, startDate, endDate, start, end }) => {
@@ -36,7 +55,7 @@ const fetchYahooViaApi = async ({ symbol, startDate, endDate, start, end }) => {
 
   const response = await fetch(`/api/quotes?${params.toString()}`)
   if (!response.ok) {
-    throw new Error('Falha ao buscar cotacao')
+    throw await parseApiError(response)
   }
   return response.json()
 }

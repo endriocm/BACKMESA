@@ -73,9 +73,38 @@ const toArrayBuffer = (data) => {
 }
 
 const spotCache = new Map()
+const SPOT_CONCURRENCY = 8
+
+const mapWithConcurrency = async (items, limit, mapper) => {
+  const results = new Array(items.length)
+  let index = 0
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (true) {
+      const current = index
+      index += 1
+      if (current >= items.length) break
+      results[current] = await mapper(items[current], current)
+    }
+  })
+  await Promise.all(workers)
+  return results
+}
+
+const formatSpotValue = (value) => {
+  if (value == null || Number.isNaN(Number(value))) return '—'
+  return formatNumber(value)
+}
+
+const formatUpdateError = (error, prefix = 'Falha ao atualizar') => {
+  const provider = error?.provider || error?.payload?.source || error?.source
+  const status = error?.status || error?.payload?.status
+  const detail = error?.detail || error?.message || 'erro desconhecido'
+  const providerLabel = provider ? ` (${provider}${status ? ` ${status}` : ''})` : ''
+  return `${prefix}${providerLabel}: ${detail}`
+}
 
 const fetchSpotPrice = async (ticker, { force = false } = {}) => {
-  const key = String(ticker || '').trim()
+  const key = String(ticker || '').trim().toUpperCase()
   if (!key) return null
   if (!force && spotCache.has(key)) return spotCache.get(key)
   try {
@@ -97,14 +126,16 @@ const attachSpotPrices = async (rows) => {
   const pendingTickers = Array.from(new Set(
     rows
       .filter((row) => row?.ativo)
-      .map((row) => String(row.ativo || '').trim())
+      .map((row) => String(row.ativo || '').trim().toUpperCase())
       .filter(Boolean),
   ))
 
   if (!pendingTickers.length) return rows
 
-  const results = await Promise.all(
-    pendingTickers.map(async (ticker) => [ticker, await fetchSpotPrice(ticker, { force: true })]),
+  const results = await mapWithConcurrency(
+    pendingTickers,
+    SPOT_CONCURRENCY,
+    async (ticker) => [ticker, await fetchSpotPrice(ticker, { force: true })],
   )
 
   const priceMap = new Map(results.filter(([, price]) => price != null))
@@ -112,7 +143,7 @@ const attachSpotPrices = async (rows) => {
 
   return rows.map((row) => {
     if (!row?.ativo) return row
-    const price = priceMap.get(String(row.ativo || '').trim())
+    const price = priceMap.get(String(row.ativo || '').trim().toUpperCase())
     if (price == null) return row
     return { ...row, spotInicial: price }
   })
@@ -197,16 +228,18 @@ const Vencimento = () => {
       })
       setMarketMap((prev) => ({ ...prev, [operation.id]: market }))
       notify('Dados atualizados.', 'success')
-    } catch {
-      notify('Falha ao atualizar dados.', 'warning')
+    } catch (error) {
+      notify(formatUpdateError(error), 'warning')
     }
   }, [notify])
 
   const handleRefreshAll = useCallback(async () => {
     setIsRefreshingAll(true)
     try {
-      const updates = await Promise.all(
-        operations.map(async (operation) => {
+      const updates = await mapWithConcurrency(
+        operations,
+        SPOT_CONCURRENCY,
+        async (operation) => {
           if (!operation.ativo || !operation.dataRegistro || !operation.vencimento) return null
           try {
             const market = await fetchYahooMarketData({
@@ -215,31 +248,26 @@ const Vencimento = () => {
               endDate: operation.vencimento,
             })
             return { id: operation.id, market }
-          } catch {
-            return {
-              id: operation.id,
-              market: {
-                close: operation.spotInicial,
-                high: null,
-                low: null,
-                dividendsTotal: 0,
-                lastUpdate: Date.now(),
-                source: 'fallback',
-              },
-            }
+          } catch (error) {
+            return { id: operation.id, error }
           }
-        }),
+        },
       )
       setMarketMap((prev) => {
         const next = { ...prev }
         updates.forEach((update) => {
-          if (update?.id) next[update.id] = update.market
+          if (update?.id && update.market) next[update.id] = update.market
         })
         return next
       })
-      notify('Precos atualizados.', 'success')
-    } catch {
-      notify('Falha ao atualizar precos.', 'warning')
+      const failures = updates.filter((update) => update?.error)
+      if (failures.length) {
+        notify(formatUpdateError(failures[0].error, `Falha ao atualizar ${failures.length} ativo(s)`), 'warning')
+      } else {
+        notify('Precos atualizados.', 'success')
+      }
+    } catch (error) {
+      notify(formatUpdateError(error, 'Falha ao atualizar precos'), 'warning')
     } finally {
       setIsRefreshingAll(false)
     }
@@ -324,7 +352,7 @@ const Vencimento = () => {
         render: (row) => (
           <div className="spot-cell">
             <div className="cell-stack">
-              <strong>{formatNumber(row.spotBase ?? row.spotInicial)}</strong>
+              <strong>{formatSpotValue(row.spotBase ?? row.spotInicial)}</strong>
             </div>
             <button
               className="icon-btn ghost"
@@ -530,7 +558,7 @@ const Vencimento = () => {
       header: `${row.ativo} | ${row.estrutura} | ${formatDate(row.vencimento)}`,
       summary: `<strong>${formatCurrency(row.result.financeiroFinal)}</strong> <span class=\"badge\">${barrierBadge.label}</span>`,
       details: [
-        { label: 'Spot', value: formatNumber(row.spotBase ?? row.spotInicial) },
+        { label: 'Spot', value: formatSpotValue(row.spotBase ?? row.spotInicial) },
         { label: 'Quantidade', value: formatNumber(row.quantidade) },
         { label: 'Pagou', value: formatCurrency(row.result.pagou) },
         { label: 'Financeiro final', value: formatCurrency(row.result.financeiroFinal) },

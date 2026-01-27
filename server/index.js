@@ -166,9 +166,10 @@ app.get('/api/quotes', async (req, res) => {
 
   const normalizeYahooSymbol = (ticker) => {
     if (!ticker) return ''
-    if (ticker.includes('.')) return ticker
-    if (/^[A-Z]{4}\d$/.test(ticker)) return `${ticker}.SA`
-    return ticker
+    const raw = String(ticker).trim().toUpperCase()
+    if (raw.includes('.')) return raw
+    if (/^[A-Z]{4,6}\d{1,2}[A-Z]?$/.test(raw)) return `${raw}.SA`
+    return raw
   }
 
   const normalizeBrapiSymbol = (ticker) => {
@@ -178,7 +179,12 @@ app.get('/api/quotes', async (req, res) => {
     return raw
   }
 
-  const isBrazilianSymbol = (ticker) => /^[A-Z]{4}\d$/.test(ticker) || String(ticker || '').toUpperCase().endsWith('.SA')
+  const getBrapiToken = () => process.env.BRAPI_TOKEN || process.env.brapi_token || process.env.BRAPI_API_KEY
+
+  const isBrazilianSymbol = (ticker) => {
+    const raw = String(ticker || '').trim().toUpperCase()
+    return /^[A-Z]{4,6}\d{1,2}[A-Z]?$/.test(raw) || raw.endsWith('.SA')
+  }
 
   const normalized = normalizeYahooSymbol(symbol)
   const startSec = start ? Number(start) : Math.floor(new Date(startDate).getTime() / 1000)
@@ -187,9 +193,10 @@ app.get('/api/quotes', async (req, res) => {
     if (isBrazilianSymbol(symbol)) {
       const brapiSymbol = normalizeBrapiSymbol(symbol)
       const brapiUrl = `https://brapi.dev/api/quote/${encodeURIComponent(brapiSymbol)}`
+      const brapiToken = getBrapiToken()
       const brapiHeaders = {}
-      if (process.env.BRAPI_API_KEY) {
-        brapiHeaders.Authorization = `Bearer ${process.env.BRAPI_API_KEY}`
+      if (brapiToken) {
+        brapiHeaders.Authorization = `Bearer ${brapiToken}`
       }
       const brapiResponse = await fetch(brapiUrl, { headers: brapiHeaders })
       if (brapiResponse.ok) {
@@ -219,9 +226,11 @@ app.get('/api/quotes', async (req, res) => {
       const body = await readBodySnippet(response)
       res.status(502).json({
         error: 'Falha ao buscar cotacao.',
+        source: 'yahoo',
         status: response.status,
         url,
         body,
+        detailsSnippet: body,
       })
       return
     }
