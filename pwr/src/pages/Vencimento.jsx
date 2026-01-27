@@ -72,6 +72,51 @@ const toArrayBuffer = (data) => {
   return null
 }
 
+const spotCache = new Map()
+
+const fetchSpotPrice = async (ticker) => {
+  const key = String(ticker || '').trim()
+  if (!key) return null
+  if (spotCache.has(key)) return spotCache.get(key)
+  try {
+    const r = await fetch(`/api/spot?symbol=${encodeURIComponent(key)}`)
+    if (!r.ok) return null
+    const data = await r.json()
+    const price = Number(data?.price)
+    if (!Number.isFinite(price)) return null
+    spotCache.set(key, price)
+    return price
+  } catch {
+    return null
+  }
+}
+
+const attachSpotPrices = async (rows) => {
+  if (!Array.isArray(rows) || !rows.length) return rows
+  const pendingTickers = Array.from(new Set(
+    rows
+      .filter((row) => row?.ativo && row.spotInicial == null)
+      .map((row) => String(row.ativo || '').trim())
+      .filter(Boolean),
+  ))
+
+  if (!pendingTickers.length) return rows
+
+  const results = await Promise.all(
+    pendingTickers.map(async (ticker) => [ticker, await fetchSpotPrice(ticker)]),
+  )
+
+  const priceMap = new Map(results.filter(([, price]) => price != null))
+  if (!priceMap.size) return rows
+
+  return rows.map((row) => {
+    if (!row?.ativo || row.spotInicial != null) return row
+    const price = priceMap.get(String(row.ativo || '').trim())
+    if (price == null) return row
+    return { ...row, spotInicial: price }
+  })
+}
+
 const Vencimento = () => {
   const { notify } = useToast()
   const [filters, setFilters] = useState({ search: '', broker: '', assessor: '', cliente: '', status: '' })
@@ -435,7 +480,8 @@ const Vencimento = () => {
         const buffer = toArrayBuffer(raw)
         if (!buffer) throw new Error('buffer-invalid')
         const parsed = await parseWorkbookBuffer(buffer)
-        setOperations(parsed)
+        const withSpot = await attachSpotPrices(parsed)
+        setOperations(withSpot)
         notify('Planilha vinculada e calculada.', 'success')
         return
       }
@@ -448,13 +494,15 @@ const Vencimento = () => {
       if (!response.ok) throw new Error('api-failed')
       const data = await response.json()
       if (!data?.rows) throw new Error('api-invalid')
-      setOperations(data.rows)
+      const withSpot = await attachSpotPrices(data.rows)
+      setOperations(withSpot)
       notify('Planilha vinculada e calculada.', 'success')
     } catch {
       try {
         const file = pendingFile?.file || pendingFile
         const parsed = await parseWorkbook(file)
-        setOperations(parsed)
+        const withSpot = await attachSpotPrices(parsed)
+        setOperations(withSpot)
         notify('API indisponivel. Calculo local aplicado.', 'warning')
       } catch {
         notify('Falha ao calcular os dados da planilha.', 'warning')
