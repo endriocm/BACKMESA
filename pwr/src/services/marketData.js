@@ -44,6 +44,22 @@ const getRangeStats = (values) => {
   }
 }
 
+const fetchYahooViaApi = async ({ symbol, startDate, endDate, start, end }) => {
+  const params = new URLSearchParams({
+    symbol,
+  })
+  if (startDate) params.set('startDate', startDate)
+  if (endDate) params.set('endDate', endDate)
+  if (start != null) params.set('start', String(start))
+  if (end != null) params.set('end', String(end))
+
+  const response = await fetch(`/api/quotes?${params.toString()}`)
+  if (!response.ok) {
+    throw new Error('Falha ao buscar cotacao')
+  }
+  return response.json()
+}
+
 export const fetchYahooMarketData = async ({ symbol, startDate, endDate }) => {
   const normalized = normalizeYahooSymbol(symbol)
   const start = Math.floor(new Date(startDate).getTime() / 1000)
@@ -52,32 +68,43 @@ export const fetchYahooMarketData = async ({ symbol, startDate, endDate }) => {
   const cached = getCached(key)
   if (cached) return { ...cached, cached: true }
 
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(normalized)}?period1=${start}&period2=${end}&interval=1d&events=div`
+  try {
+    const data = await fetchYahooViaApi({
+      symbol: normalized,
+      startDate,
+      endDate,
+      start,
+      end,
+    })
+    return setCached(key, { ...data, cached: false })
+  } catch {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(normalized)}?period1=${start}&period2=${end}&interval=1d&events=div`
 
-  const response = await fetch(url)
-  if (!response.ok) {
-    throw new Error('Falha ao buscar cotacao')
+    const response = await fetch(url)
+    if (!response.ok) {
+      throw new Error('Falha ao buscar cotacao')
+    }
+    const payload = await response.json()
+    const result = payload?.chart?.result?.[0]
+    const quote = result?.indicators?.quote?.[0]
+    const close = lastValid(quote?.close)
+    const highs = getRangeStats(quote?.high)
+    const lows = getRangeStats(quote?.low)
+
+    const dividendsObj = result?.events?.dividends || {}
+    const dividends = Object.values(dividendsObj)
+    const dividendTotal = dividends.reduce((sum, item) => sum + (item?.amount || 0), 0)
+
+    const data = {
+      symbol: normalized,
+      close,
+      high: highs.max,
+      low: lows.min,
+      dividendsTotal: dividendTotal,
+      lastUpdate: Date.now(),
+      source: 'yahoo',
+    }
+
+    return setCached(key, data)
   }
-  const payload = await response.json()
-  const result = payload?.chart?.result?.[0]
-  const quote = result?.indicators?.quote?.[0]
-  const close = lastValid(quote?.close)
-  const highs = getRangeStats(quote?.high)
-  const lows = getRangeStats(quote?.low)
-
-  const dividendsObj = result?.events?.dividends || {}
-  const dividends = Object.values(dividendsObj)
-  const dividendTotal = dividends.reduce((sum, item) => sum + (item?.amount || 0), 0)
-
-  const data = {
-    symbol: normalized,
-    close,
-    high: highs.max,
-    low: lows.min,
-    dividendsTotal: dividendTotal,
-    lastUpdate: Date.now(),
-    source: 'yahoo',
-  }
-
-  return setCached(key, data)
 }

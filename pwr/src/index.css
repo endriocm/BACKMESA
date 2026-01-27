@@ -772,6 +772,7 @@ button {
   top: 0;
   background: rgba(15, 21, 32, 0.9);
   backdrop-filter: blur(10px);
+  z-index: 2;
 }
 
 .data-table tbody tr {
@@ -787,6 +788,9 @@ button {
 .table-wrap {
   width: 100%;
   overflow-x: auto;
+  max-height: 520px;
+  overflow-y: auto;
+  border-radius: 14px;
 }
 
 .badge {
@@ -896,6 +900,15 @@ button {
 .row-actions {
   display: flex;
   gap: 8px;
+}
+
+.table-actions {
+  margin-top: 12px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .report-header {

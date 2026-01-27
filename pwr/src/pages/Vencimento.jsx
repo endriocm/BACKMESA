@@ -84,6 +84,7 @@ const Vencimento = () => {
   const [folderLabel, setFolderLabel] = useState('Nenhuma pasta vinculada')
   const [pendingFile, setPendingFile] = useState(null)
   const [isParsing, setIsParsing] = useState(false)
+  const [isRefreshingAll, setIsRefreshingAll] = useState(false)
   const fileInputRef = useRef(null)
 
   useEffect(() => {
@@ -146,6 +147,49 @@ const Vencimento = () => {
       notify('Falha ao atualizar dados.', 'warning')
     }
   }, [notify])
+
+  const handleRefreshAll = useCallback(async () => {
+    setIsRefreshingAll(true)
+    try {
+      const updates = await Promise.all(
+        operations.map(async (operation) => {
+          if (!operation.ativo || !operation.dataRegistro || !operation.vencimento) return null
+          try {
+            const market = await fetchYahooMarketData({
+              symbol: operation.ativo,
+              startDate: operation.dataRegistro,
+              endDate: operation.vencimento,
+            })
+            return { id: operation.id, market }
+          } catch {
+            return {
+              id: operation.id,
+              market: {
+                close: operation.spotInicial,
+                high: null,
+                low: null,
+                dividendsTotal: 0,
+                lastUpdate: Date.now(),
+                source: 'fallback',
+              },
+            }
+          }
+        }),
+      )
+      setMarketMap((prev) => {
+        const next = { ...prev }
+        updates.forEach((update) => {
+          if (update?.id) next[update.id] = update.market
+        })
+        return next
+      })
+      notify('Precos atualizados.', 'success')
+    } catch {
+      notify('Falha ao atualizar precos.', 'warning')
+    } finally {
+      setIsRefreshingAll(false)
+    }
+  }, [operations, notify])
 
   const rows = useMemo(() => {
     return operations
@@ -562,6 +606,18 @@ const Vencimento = () => {
             </button>
           </div>
         ) : null}
+        <div className="table-actions">
+          <button
+            className="btn btn-secondary"
+            type="button"
+            onClick={handleRefreshAll}
+            disabled={isRefreshingAll}
+          >
+            <Icon name="sync" size={16} />
+            {isRefreshingAll ? 'Atualizando...' : 'Atualizar spots'}
+          </button>
+          <span className="muted">Mostrando 20 de {rows.length}</span>
+        </div>
         <DataTable
           rows={visibleRows}
           columns={columns}
