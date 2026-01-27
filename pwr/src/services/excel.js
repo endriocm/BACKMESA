@@ -12,23 +12,45 @@ const getValue = (row, keys) => {
   return null
 }
 
+const toNumber = (value) => {
+  if (value == null || value === '') return null
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null
+  const raw = String(value).trim()
+  if (!raw) return null
+  let cleaned = raw.replace(/[^\d,.-]/g, '')
+  if (!cleaned) return null
+  const hasComma = cleaned.includes(',')
+  const hasDot = cleaned.includes('.')
+  if (hasComma && hasDot) {
+    if (cleaned.lastIndexOf(',') > cleaned.lastIndexOf('.')) {
+      cleaned = cleaned.replace(/\./g, '').replace(/,/g, '.')
+    } else {
+      cleaned = cleaned.replace(/,/g, '')
+    }
+  } else if (hasComma) {
+    cleaned = cleaned.replace(/,/g, '.')
+  }
+  const parsed = Number(cleaned)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
 const parseLegs = (row) => {
   const legs = []
   for (let i = 1; i <= 4; i += 1) {
     const prefix = `perna${i}`
     const tipo = getValue(row, [`${prefix}tipo`, `${prefix}opcao`, `${prefix}tipoperna`])
-    const strike = getValue(row, [`${prefix}strike`, `${prefix}preco`, `${prefix}precoexercicio`])
-    const barreiraValor = getValue(row, [`${prefix}barreira`, `${prefix}nivelbarreira`])
+    const strike = toNumber(getValue(row, [`${prefix}strike`, `${prefix}preco`, `${prefix}precoexercicio`]))
+    const barreiraValor = toNumber(getValue(row, [`${prefix}barreira`, `${prefix}nivelbarreira`]))
     const barreiraTipo = getValue(row, [`${prefix}tipobarreira`, `${prefix}barreiratipo`])
-    const rebate = getValue(row, [`${prefix}rebate`, `${prefix}rebatevalor`])
-    if (!tipo && !strike && !barreiraValor) continue
+    const rebate = toNumber(getValue(row, [`${prefix}rebate`, `${prefix}rebatevalor`]))
+    if (!tipo && strike == null && barreiraValor == null) continue
     legs.push({
       id: `${prefix}`,
       tipo,
       strike,
       barreiraValor,
       barreiraTipo,
-      rebate: rebate || 0,
+      rebate: rebate ?? 0,
     })
   }
   return legs
@@ -36,11 +58,11 @@ const parseLegs = (row) => {
 
 const parseColumnLegs = (row, quantity) => {
   const legs = []
-  const callComprada = getValue(row, ['callcomprada', 'callcompra'])
-  const callVendida = getValue(row, ['callvendida', 'callvenda'])
-  const putComprada = getValue(row, ['putcomprada', 'putcompra'])
-  const putComprada2 = getValue(row, ['putcomprada2', 'putcompra2'])
-  const putVendida = getValue(row, ['putvendida', 'putvenda'])
+  const callComprada = toNumber(getValue(row, ['callcomprada', 'callcompra']))
+  const callVendida = toNumber(getValue(row, ['callvendida', 'callvenda']))
+  const putComprada = toNumber(getValue(row, ['putcomprada', 'putcompra']))
+  const putComprada2 = toNumber(getValue(row, ['putcomprada2', 'putcompra2']))
+  const putVendida = toNumber(getValue(row, ['putvendida', 'putvenda']))
 
   if (callComprada) legs.push({ id: 'call-comprada', tipo: 'CALL', side: 'long', strike: callComprada, quantidade: quantity })
   if (callVendida) legs.push({ id: 'call-vendida', tipo: 'CALL', side: 'short', strike: callVendida, quantidade: quantity })
@@ -48,8 +70,8 @@ const parseColumnLegs = (row, quantity) => {
   if (putComprada2) legs.push({ id: 'put-comprada-2', tipo: 'PUT', side: 'long', strike: putComprada2, quantidade: quantity })
   if (putVendida) legs.push({ id: 'put-vendida', tipo: 'PUT', side: 'short', strike: putVendida, quantidade: quantity })
 
-  const barreiraKi = getValue(row, ['barreiraki', 'barreira_ki'])
-  const barreiraKo = getValue(row, ['barreirako', 'barreira_ko'])
+  const barreiraKi = toNumber(getValue(row, ['barreiraki', 'barreira_ki']))
+  const barreiraKo = toNumber(getValue(row, ['barreirako', 'barreira_ko']))
   if (barreiraKi) legs.push({ id: 'barreira-ki', barreiraValor: barreiraKi, barreiraTipo: 'KI' })
   if (barreiraKo) legs.push({ id: 'barreira-ko', barreiraValor: barreiraKo, barreiraTipo: 'KO' })
 
@@ -86,7 +108,7 @@ export const parseWorkbook = async (file) => {
     const dataRegistro = normalizeDate(getValue(normalizedRow, ['dataregistro', 'dataentrada', 'datainicio']), XLSX)
     const dataVencimento = normalizeDate(getValue(normalizedRow, ['datavencimento', 'datafim']), XLSX)
 
-    const quantidade = getValue(normalizedRow, ['quantidade', 'qtd', 'lote'])
+    const quantidade = toNumber(getValue(normalizedRow, ['quantidade', 'qtd', 'lote']))
     const pernas = parseLegs(normalizedRow)
     const columnLegs = parseColumnLegs(normalizedRow, quantidade)
 
@@ -100,11 +122,11 @@ export const parseWorkbook = async (file) => {
       codigoOperacao: getValue(normalizedRow, ['codigooperacao', 'operacao']),
       dataRegistro: dataRegistro || '',
       vencimento: dataVencimento || '',
-      spotInicial: getValue(normalizedRow, ['spotinicial', 'spotentrada', 'spot', 'valordecompra', 'valorentrada']),
-      custoUnitario: getValue(normalizedRow, ['custounitario', 'custounit', 'custo']),
-      quantidade,
+      spotInicial: toNumber(getValue(normalizedRow, ['spotinicial', 'spotentrada', 'spot', 'valordecompra', 'valorentrada'])),
+      custoUnitario: toNumber(getValue(normalizedRow, ['custounitario', 'custounit', 'custo'])),
+      quantidade: quantidade ?? 0,
       cupom: getValue(normalizedRow, ['cupom', 'taxacupom']),
-      pagou: getValue(normalizedRow, ['pagou']),
+      pagou: toNumber(getValue(normalizedRow, ['pagou'])),
       pernas: pernas.length ? pernas : columnLegs,
     }
   })

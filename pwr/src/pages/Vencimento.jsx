@@ -132,6 +132,8 @@ const Vencimento = () => {
       })
   }, [filters, operations, marketMap, overrides])
 
+  const visibleRows = useMemo(() => rows.slice(0, 20), [rows])
+
   const totals = useMemo(() => {
     const total = rows.length
     const criticos = rows.filter((row) => row.status.key === 'critico').length
@@ -177,9 +179,22 @@ const Vencimento = () => {
         key: 'spot',
         label: 'Spot',
         render: (row) => (
-          <div className="cell-stack">
-            <strong>{formatNumber(row.spotInicial)}</strong>
-            <small>{formatNumber(row.result.spotFinal)}</small>
+          <div className="spot-cell">
+            <div className="cell-stack">
+              <strong>{formatNumber(row.spotInicial)}</strong>
+              <small>{formatNumber(row.result.spotFinal)}</small>
+            </div>
+            <button
+              className="icon-btn ghost"
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation()
+                handleRefreshData(row)
+              }}
+              aria-label="Atualizar spot"
+            >
+              <Icon name="sync" size={14} />
+            </button>
           </div>
         ),
       },
@@ -443,7 +458,7 @@ const Vencimento = () => {
           </div>
         ) : null}
         <DataTable
-          rows={rows}
+          rows={visibleRows}
           columns={columns}
           emptyMessage="Nenhuma estrutura encontrada."
           onRowClick={handleReportClick}

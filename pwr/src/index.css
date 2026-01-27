@@ -881,6 +881,18 @@ button {
   font-size: 0.72rem;
 }
 
+.spot-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.spot-cell .icon-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+}
+
 .row-actions {
   display: flex;
   gap: 8px;
