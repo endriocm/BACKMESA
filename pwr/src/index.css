@@ -472,6 +472,12 @@ button {
   outline: none;
 }
 
+.input option,
+.input optgroup {
+  color: #0b0f14;
+  background: #f5f7fb;
+}
+
 .input:focus {
   border-color: rgba(40, 242, 230, 0.6);
   box-shadow: var(--glow-cyan);
