@@ -60,6 +60,16 @@ const normalizeDate = (value) => {
   return value
 }
 
+const readBodySnippet = async (response) => {
+  try {
+    const text = await response.text()
+    if (!text) return ''
+    return text.length > 300 ? `${text.slice(0, 300)}...` : text
+  } catch {
+    return ''
+  }
+}
+
 const parseLegs = (row) => {
   const legs = []
   for (let i = 1; i <= 4; i += 1) {
@@ -200,9 +210,19 @@ app.get('/api/quotes', async (req, res) => {
       }
     }
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(normalized)}?period1=${startSec}&period2=${endSec}&interval=1d&events=div`
-    const response = await fetch(url)
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0',
+      },
+    })
     if (!response.ok) {
-      res.status(502).json({ error: 'Falha ao buscar cotacao.' })
+      const body = await readBodySnippet(response)
+      res.status(502).json({
+        error: 'Falha ao buscar cotacao.',
+        status: response.status,
+        url,
+        body,
+      })
       return
     }
     const payload = await response.json()
@@ -242,8 +262,11 @@ app.get('/api/quotes', async (req, res) => {
       source: 'yahoo',
       lastUpdate: Date.now(),
     })
-  } catch {
-    res.status(500).json({ error: 'Erro ao consultar Yahoo.' })
+  } catch (error) {
+    res.status(500).json({
+      error: 'Erro ao consultar Yahoo.',
+      message: error?.message,
+    })
   }
 })
 

@@ -25,25 +25,6 @@ export const normalizeYahooSymbol = (ticker) => {
   return ticker
 }
 
-const lastValid = (values) => {
-  if (!Array.isArray(values)) return null
-  for (let i = values.length - 1; i >= 0; i -= 1) {
-    const value = values[i]
-    if (value != null) return value
-  }
-  return null
-}
-
-const getRangeStats = (values) => {
-  if (!Array.isArray(values)) return { min: null, max: null }
-  const filtered = values.filter((value) => value != null)
-  if (!filtered.length) return { min: null, max: null }
-  return {
-    min: Math.min(...filtered),
-    max: Math.max(...filtered),
-  }
-}
-
 const fetchYahooViaApi = async ({ symbol, startDate, endDate, start, end }) => {
   const params = new URLSearchParams({
     symbol,
@@ -68,43 +49,12 @@ export const fetchYahooMarketData = async ({ symbol, startDate, endDate }) => {
   const cached = getCached(key)
   if (cached) return { ...cached, cached: true }
 
-  try {
-    const data = await fetchYahooViaApi({
-      symbol: normalized,
-      startDate,
-      endDate,
-      start,
-      end,
-    })
-    return setCached(key, { ...data, cached: false })
-  } catch {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(normalized)}?period1=${start}&period2=${end}&interval=1d&events=div`
-
-    const response = await fetch(url)
-    if (!response.ok) {
-      throw new Error('Falha ao buscar cotacao')
-    }
-    const payload = await response.json()
-    const result = payload?.chart?.result?.[0]
-    const quote = result?.indicators?.quote?.[0]
-    const close = lastValid(quote?.close)
-    const highs = getRangeStats(quote?.high)
-    const lows = getRangeStats(quote?.low)
-
-    const dividendsObj = result?.events?.dividends || {}
-    const dividends = Object.values(dividendsObj)
-    const dividendTotal = dividends.reduce((sum, item) => sum + (item?.amount || 0), 0)
-
-    const data = {
-      symbol: normalized,
-      close,
-      high: highs.max,
-      low: lows.min,
-      dividendsTotal: dividendTotal,
-      lastUpdate: Date.now(),
-      source: 'yahoo',
-    }
-
-    return setCached(key, data)
-  }
+  const data = await fetchYahooViaApi({
+    symbol: normalized,
+    startDate,
+    endDate,
+    start,
+    end,
+  })
+  return setCached(key, { ...data, cached: false })
 }
