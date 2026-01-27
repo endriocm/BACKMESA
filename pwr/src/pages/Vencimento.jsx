@@ -5,6 +5,7 @@ import Badge from '../components/Badge'
 import Icon from '../components/Icons'
 import ReportModal from '../components/ReportModal'
 import OverrideModal from '../components/OverrideModal'
+import SelectMenu from '../components/SelectMenu'
 import { vencimentos, statusConfig } from '../data/vencimento'
 import { formatCurrency, formatDate, formatNumber } from '../utils/format'
 import { fetchYahooMarketData } from '../services/marketData'
@@ -105,6 +106,29 @@ const formatUpdateError = (error, prefix = 'Falha ao atualizar') => {
   return `${prefix}${providerLabel}: ${detail}`
 }
 
+const getMonthKey = (value) => {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  return `${date.getFullYear()}-${month}`
+}
+
+const formatMonthLabel = (key) => {
+  if (!key) return ''
+  const [year, month] = key.split('-')
+  if (!year || !month) return key
+  return `${month}/${year}`
+}
+
+const buildOptions = (values, placeholder) => {
+  const unique = Array.from(new Set(values.filter((value) => value != null && value !== '')))
+    .map((value) => String(value).trim())
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  return [{ value: '', label: placeholder }, ...unique.map((value) => ({ value, label: value }))]
+}
+
 const getResultTone = (value) => {
   const number = Number(value)
   if (!Number.isFinite(number) || number === 0) return ''
@@ -167,7 +191,7 @@ const resolveSpotBase = (operation, market) => {
 
 const Vencimento = () => {
   const { notify } = useToast()
-  const [filters, setFilters] = useState({ search: '', broker: '', assessor: '', cliente: '', status: '' })
+  const [filters, setFilters] = useState({ search: '', broker: '', assessor: '', cliente: '', status: '', estrutura: '', vencimento: '' })
   const [operations, setOperations] = useState(vencimentos)
   const [marketMap, setMarketMap] = useState({})
   const [overrides, setOverrides] = useState(() => loadOverrides())
@@ -226,6 +250,16 @@ const Vencimento = () => {
     return () => {
       active = false
     }
+  }, [operations])
+
+  const brokerOptions = useMemo(() => buildOptions(operations.map((item) => item.broker), 'Broker'), [operations])
+  const assessorOptions = useMemo(() => buildOptions(operations.map((item) => item.assessor), 'Assessor'), [operations])
+  const estruturaOptions = useMemo(() => buildOptions(operations.map((item) => item.estrutura), 'Estrutura'), [operations])
+  const vencimentoOptions = useMemo(() => {
+    const unique = Array.from(new Set(
+      operations.map((item) => getMonthKey(item.vencimento)).filter(Boolean),
+    )).sort()
+    return [{ value: '', label: 'Vencimento' }, ...unique.map((value) => ({ value, label: formatMonthLabel(value) }))]
   }, [operations])
 
   const handleRefreshData = useCallback(async (operation) => {
@@ -309,6 +343,8 @@ const Vencimento = () => {
         if (filters.assessor && entry.assessor !== filters.assessor) return false
         const clienteMatch = entry.codigoCliente || entry.cliente
         if (filters.cliente && clienteMatch !== filters.cliente) return false
+        if (filters.estrutura && entry.estrutura !== filters.estrutura) return false
+        if (filters.vencimento && getMonthKey(entry.vencimento) !== filters.vencimento) return false
         if (filters.status && entry.status.key !== filters.status) return false
         return true
       })
@@ -488,6 +524,8 @@ const Vencimento = () => {
     { key: 'broker', label: filters.broker },
     { key: 'assessor', label: filters.assessor },
     { key: 'cliente', label: filters.cliente },
+    { key: 'estrutura', label: filters.estrutura },
+    { key: 'vencimento', label: filters.vencimento ? formatMonthLabel(filters.vencimento) : '' },
     { key: 'status', label: filters.status },
   ].filter((chip) => chip.label)
 
@@ -702,15 +740,42 @@ const Vencimento = () => {
           </div>
         </div>
         <div className="filter-grid">
-          <input className="input" placeholder="Broker" value={filters.broker} onChange={(event) => setFilters((prev) => ({ ...prev, broker: event.target.value }))} />
-          <input className="input" placeholder="Assessor" value={filters.assessor} onChange={(event) => setFilters((prev) => ({ ...prev, assessor: event.target.value }))} />
+          <SelectMenu
+            value={filters.broker}
+            options={brokerOptions}
+            onChange={(value) => setFilters((prev) => ({ ...prev, broker: value }))}
+            placeholder="Broker"
+          />
+          <SelectMenu
+            value={filters.assessor}
+            options={assessorOptions}
+            onChange={(value) => setFilters((prev) => ({ ...prev, assessor: value }))}
+            placeholder="Assessor"
+          />
+          <SelectMenu
+            value={filters.estrutura}
+            options={estruturaOptions}
+            onChange={(value) => setFilters((prev) => ({ ...prev, estrutura: value }))}
+            placeholder="Estrutura"
+          />
+          <SelectMenu
+            value={filters.vencimento}
+            options={vencimentoOptions}
+            onChange={(value) => setFilters((prev) => ({ ...prev, vencimento: value }))}
+            placeholder="Vencimento"
+          />
           <input className="input" placeholder="Cliente" value={filters.cliente} onChange={(event) => setFilters((prev) => ({ ...prev, cliente: event.target.value }))} />
-          <select className="input" value={filters.status} onChange={(event) => setFilters((prev) => ({ ...prev, status: event.target.value }))}>
-            <option value="">Status</option>
-            <option value="ok">Neutro</option>
-            <option value="alerta">Alerta</option>
-            <option value="critico">Critico</option>
-          </select>
+          <SelectMenu
+            value={filters.status}
+            options={[
+              { value: '', label: 'Status' },
+              { value: 'ok', label: 'Neutro' },
+              { value: 'alerta', label: 'Alerta' },
+              { value: 'critico', label: 'Critico' },
+            ]}
+            onChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}
+            placeholder="Status"
+          />
         </div>
         {chips.length ? (
           <div className="chip-row">
@@ -725,7 +790,11 @@ const Vencimento = () => {
                 <Icon name="close" size={12} />
               </button>
             ))}
-            <button className="btn btn-secondary" type="button" onClick={() => setFilters({ search: '', broker: '', assessor: '', cliente: '', status: '' })}>
+            <button
+              className="btn btn-secondary"
+              type="button"
+              onClick={() => setFilters({ search: '', broker: '', assessor: '', cliente: '', status: '', estrutura: '', vencimento: '' })}
+            >
               Limpar tudo
             </button>
           </div>
@@ -752,17 +821,16 @@ const Vencimento = () => {
             >
               Anterior
             </button>
-            <select
-              className="input"
+            <SelectMenu
+              className="table-page-select"
               value={currentPage}
-              onChange={(event) => setCurrentPage(Number(event.target.value))}
-            >
-              {Array.from({ length: pageCount }, (_, index) => index + 1).map((page) => (
-                <option key={page} value={page}>
-                  Pagina {page} de {pageCount}
-                </option>
-              ))}
-            </select>
+              options={Array.from({ length: pageCount }, (_, index) => index + 1).map((page) => ({
+                value: page,
+                label: `Pagina ${page} de ${pageCount}`,
+              }))}
+              onChange={(value) => setCurrentPage(Number(value))}
+              placeholder="Pagina"
+            />
             <button
               className="btn btn-secondary"
               type="button"
