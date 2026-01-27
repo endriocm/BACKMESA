@@ -74,10 +74,10 @@ const toArrayBuffer = (data) => {
 
 const spotCache = new Map()
 
-const fetchSpotPrice = async (ticker) => {
+const fetchSpotPrice = async (ticker, { force = false } = {}) => {
   const key = String(ticker || '').trim()
   if (!key) return null
-  if (spotCache.has(key)) return spotCache.get(key)
+  if (!force && spotCache.has(key)) return spotCache.get(key)
   try {
     const r = await fetch(`/api/spot?symbol=${encodeURIComponent(key)}`)
     if (!r.ok) return null
@@ -93,9 +93,10 @@ const fetchSpotPrice = async (ticker) => {
 
 const attachSpotPrices = async (rows) => {
   if (!Array.isArray(rows) || !rows.length) return rows
+  spotCache.clear()
   const pendingTickers = Array.from(new Set(
     rows
-      .filter((row) => row?.ativo && row.spotInicial == null)
+      .filter((row) => row?.ativo)
       .map((row) => String(row.ativo || '').trim())
       .filter(Boolean),
   ))
@@ -103,18 +104,26 @@ const attachSpotPrices = async (rows) => {
   if (!pendingTickers.length) return rows
 
   const results = await Promise.all(
-    pendingTickers.map(async (ticker) => [ticker, await fetchSpotPrice(ticker)]),
+    pendingTickers.map(async (ticker) => [ticker, await fetchSpotPrice(ticker, { force: true })]),
   )
 
   const priceMap = new Map(results.filter(([, price]) => price != null))
   if (!priceMap.size) return rows
 
   return rows.map((row) => {
-    if (!row?.ativo || row.spotInicial != null) return row
+    if (!row?.ativo) return row
     const price = priceMap.get(String(row.ativo || '').trim())
     if (price == null) return row
     return { ...row, spotInicial: price }
   })
+}
+
+const resolveSpotBase = (operation, market) => {
+  const close = market?.close
+  if (close != null && Number.isFinite(Number(close))) return Number(close)
+  const spot = operation?.spotInicial
+  if (spot != null && Number.isFinite(Number(spot))) return Number(spot)
+  return null
 }
 
 const Vencimento = () => {
@@ -241,11 +250,14 @@ const Vencimento = () => {
       .map((operation) => {
         const market = marketMap[operation.id]
         const override = overrides[operation.id] || { high: 'auto', low: 'auto' }
-        const barrierStatus = computeBarrierStatus(operation, market, override)
-        const result = computeResult(operation, market, barrierStatus)
+        const spotBase = resolveSpotBase(operation, market)
+        const operationWithSpot = spotBase != null ? { ...operation, spotInicial: spotBase } : operation
+        const barrierStatus = computeBarrierStatus(operationWithSpot, market, override)
+        const result = computeResult(operationWithSpot, market, barrierStatus)
         return {
           ...operation,
           market,
+          spotBase,
           override,
           barrierStatus,
           result,
@@ -312,8 +324,7 @@ const Vencimento = () => {
         render: (row) => (
           <div className="spot-cell">
             <div className="cell-stack">
-              <strong>{formatNumber(row.spotInicial)}</strong>
-              <small>{formatNumber(row.result.spotFinal)}</small>
+              <strong>{formatNumber(row.spotBase ?? row.spotInicial)}</strong>
             </div>
             <button
               className="icon-btn ghost"
@@ -519,8 +530,7 @@ const Vencimento = () => {
       header: `${row.ativo} | ${row.estrutura} | ${formatDate(row.vencimento)}`,
       summary: `<strong>${formatCurrency(row.result.financeiroFinal)}</strong> <span class=\"badge\">${barrierBadge.label}</span>`,
       details: [
-        { label: 'Spot inicial', value: formatNumber(row.spotInicial) },
-        { label: 'Spot vencimento', value: formatNumber(row.result.spotFinal) },
+        { label: 'Spot', value: formatNumber(row.spotBase ?? row.spotInicial) },
         { label: 'Quantidade', value: formatNumber(row.quantidade) },
         { label: 'Pagou', value: formatCurrency(row.result.pagou) },
         { label: 'Financeiro final', value: formatCurrency(row.result.financeiroFinal) },

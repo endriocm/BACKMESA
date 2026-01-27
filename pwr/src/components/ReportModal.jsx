@@ -78,12 +78,8 @@ const ReportModal = ({ open, onClose, row, onExport, onCopy, onRefresh }) => {
           <h4>De onde veio o resultado</h4>
           <div className="report-list">
             <div>
-              <span>Spot inicial</span>
-              <strong>{formatNumber(row.spotInicial)}</strong>
-            </div>
-            <div>
-              <span>Spot vencimento</span>
-              <strong>{formatNumber(row.result.spotFinal)}</strong>
+              <span>Spot</span>
+              <strong>{formatNumber(row.spotBase ?? row.spotInicial)}</strong>
             </div>
             <div>
               <span>Quantidade</span>
