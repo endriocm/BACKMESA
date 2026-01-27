@@ -161,12 +161,45 @@ app.get('/api/quotes', async (req, res) => {
     return ticker
   }
 
+  const normalizeBrapiSymbol = (ticker) => {
+    if (!ticker) return ''
+    const raw = String(ticker).toUpperCase()
+    if (raw.endsWith('.SA')) return raw.replace('.SA', '')
+    return raw
+  }
+
+  const isBrazilianSymbol = (ticker) => /^[A-Z]{4}\d$/.test(ticker) || String(ticker || '').toUpperCase().endsWith('.SA')
+
   const normalized = normalizeYahooSymbol(symbol)
   const startSec = start ? Number(start) : Math.floor(new Date(startDate).getTime() / 1000)
   const endSec = end ? Number(end) : Math.floor(new Date(endDate).getTime() / 1000) + 86400
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(normalized)}?period1=${startSec}&period2=${endSec}&interval=1d&events=div`
-
   try {
+    if (isBrazilianSymbol(symbol)) {
+      const brapiSymbol = normalizeBrapiSymbol(symbol)
+      const brapiUrl = `https://brapi.dev/api/quote/${encodeURIComponent(brapiSymbol)}`
+      const brapiHeaders = {}
+      if (process.env.BRAPI_API_KEY) {
+        brapiHeaders.Authorization = `Bearer ${process.env.BRAPI_API_KEY}`
+      }
+      const brapiResponse = await fetch(brapiUrl, { headers: brapiHeaders })
+      if (brapiResponse.ok) {
+        const brapiPayload = await brapiResponse.json()
+        const result = brapiPayload?.results?.[0]
+        if (result?.regularMarketPrice != null) {
+          res.json({
+            symbol: result.symbol || brapiSymbol,
+            close: result.regularMarketPrice,
+            high: result.regularMarketDayHigh ?? null,
+            low: result.regularMarketDayLow ?? null,
+            dividendsTotal: 0,
+            source: 'brapi',
+            lastUpdate: Date.now(),
+          })
+          return
+        }
+      }
+    }
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(normalized)}?period1=${startSec}&period2=${endSec}&interval=1d&events=div`
     const response = await fetch(url)
     if (!response.ok) {
       res.status(502).json({ error: 'Falha ao buscar cotacao.' })
