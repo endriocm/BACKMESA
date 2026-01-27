@@ -53,6 +53,8 @@ const Vencimento = () => {
   const [selectedOverride, setSelectedOverride] = useState(null)
   const [overrideDraft, setOverrideDraft] = useState({ high: 'auto', low: 'auto' })
   const [folderLabel, setFolderLabel] = useState('Nenhuma pasta vinculada')
+  const [pendingFile, setPendingFile] = useState(null)
+  const [isParsing, setIsParsing] = useState(false)
   const fileInputRef = useRef(null)
 
   useEffect(() => {
@@ -287,7 +289,6 @@ const Vencimento = () => {
     try {
       if ('showDirectoryPicker' in window) {
         const handle = await window.showDirectoryPicker()
-        setFolderLabel(handle.name)
         let pickedFile = null
         for await (const entry of handle.values()) {
           if (entry.kind === 'file' && entry.name.endsWith('.xlsx')) {
@@ -297,11 +298,12 @@ const Vencimento = () => {
         }
         if (!pickedFile) {
           notify('Nenhuma planilha .xlsx encontrada.', 'warning')
+          setPendingFile(null)
           return
         }
-        const parsed = await parseWorkbook(pickedFile)
-        setOperations(parsed)
-        notify('Planilha importada com sucesso.', 'success')
+        setPendingFile(pickedFile)
+        setFolderLabel(`${handle.name} • ${pickedFile.name}`)
+        notify('Pasta selecionada. Clique em vincular para calcular.', 'success')
       } else {
         fileInputRef.current?.click()
       }
@@ -318,14 +320,26 @@ const Vencimento = () => {
       return
     }
     setFolderLabel(file.name)
-    try {
-      const parsed = await parseWorkbook(file)
-      setOperations(parsed)
-      notify('Planilha importada com sucesso.', 'success')
-    } catch {
-      notify('Falha ao importar planilha.', 'warning')
-    }
+    setPendingFile(file)
+    notify('Planilha pronta. Clique em vincular para calcular.', 'success')
   }
+
+  const handleApplyFolder = useCallback(async () => {
+    if (!pendingFile) {
+      notify('Escolha a pasta/planilha antes de vincular.', 'warning')
+      return
+    }
+    setIsParsing(true)
+    try {
+      const parsed = await parseWorkbook(pendingFile)
+      setOperations(parsed)
+      notify('Planilha vinculada e calculada.', 'success')
+    } catch {
+      notify('Falha ao calcular os dados da planilha.', 'warning')
+    } finally {
+      setIsParsing(false)
+    }
+  }, [pendingFile, notify])
 
   const handleExportPdf = (row) => {
     const barrierBadge = getBarrierBadge(row.barrierStatus)
@@ -397,6 +411,15 @@ const Vencimento = () => {
             <button className="btn btn-secondary" type="button" onClick={handlePickFolder}>
               <Icon name="link" size={16} />
               Vincular pasta
+            </button>
+            <button
+              className="btn btn-primary"
+              type="button"
+              onClick={handleApplyFolder}
+              disabled={!pendingFile || isParsing}
+            >
+              <Icon name="sync" size={16} />
+              {isParsing ? 'Calculando...' : 'Vincular e calcular'}
             </button>
             <input
               ref={fileInputRef}
