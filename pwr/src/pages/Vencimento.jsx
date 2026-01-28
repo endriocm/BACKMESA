@@ -393,8 +393,8 @@ const Vencimento = () => {
   const handleRefreshAll = useCallback(async () => {
     setIsRefreshingAll(true)
     try {
-      const operationMap = new Map(operations.map((operation) => [operation.id, operation]))
-      const dividendRequests = operations.map(buildDividendRequest).filter(Boolean)
+      const operationMap = new Map(visibleRows.map((operation) => [operation.id, operation]))
+      const dividendRequests = visibleRows.map(buildDividendRequest).filter(Boolean)
       let dividendMap = new Map()
       if (dividendRequests.length) {
         try {
@@ -405,7 +405,7 @@ const Vencimento = () => {
         }
       }
       const updates = await mapWithConcurrency(
-        operations,
+        visibleRows,
         SPOT_CONCURRENCY,
         async (operation) => {
           if (!operation.ativo || !operation.dataRegistro || !operation.vencimento) return null
@@ -444,7 +444,7 @@ const Vencimento = () => {
     } finally {
       setIsRefreshingAll(false)
     }
-  }, [operations, notify])
+  }, [visibleRows, notify])
 
   const rows = useMemo(() => {
     const vencimentoSet = new Set(filters.vencimentos)
