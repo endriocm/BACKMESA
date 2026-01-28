@@ -77,9 +77,10 @@ const previousBusinessDay = (dateKey) => {
 
 const normalizeType = (value) => {
   const raw = String(value || '').trim().toUpperCase()
-  if (!raw) return ''
-  if (raw.includes('JCP')) return 'JCP'
-  return 'DIVIDEND'
+  if (!raw) return 'DIV'
+  if (raw.includes('JCP') || raw.includes('JUROS') || (raw.includes('REND') && raw.includes('TRIBUT'))) return 'JCP'
+  if (raw.includes('DIV') || raw.includes('PROVENT')) return 'DIV'
+  return 'DIV'
 }
 
 const parseAmount = (value) => {
@@ -105,10 +106,28 @@ const inRangeInclusive = (dateKey, from, to) => {
 }
 
 const applyNetValue = (event) => {
+  if (event?.valueNet != null && Number.isFinite(Number(event.valueNet))) {
+    return Number(event.valueNet)
+  }
   const amount = parseAmount(event?.amount ?? event?.value ?? event?.rate ?? event?.cash_amount ?? 0)
   if (!Number.isFinite(amount)) return 0
   const type = normalizeType(event?.type)
   return type === 'JCP' ? amount * 0.85 : amount
+}
+
+const buildEvent = ({ typeRaw, dataCom, paymentDate, amount }) => {
+  const normalizedType = normalizeType(typeRaw)
+  const numericAmount = parseAmount(amount)
+  if (!Number.isFinite(numericAmount)) return null
+  const valueNet = normalizedType === 'JCP' ? numericAmount * 0.85 : numericAmount
+  return {
+    type: normalizedType,
+    typeRaw: typeRaw ? String(typeRaw) : null,
+    dataCom: normalizeDateKey(dataCom),
+    paymentDate: normalizeDateKey(paymentDate),
+    amount: numericAmount,
+    valueNet,
+  }
 }
 
 const aggregateEvents = (events, from, to) => {
@@ -158,13 +177,13 @@ const fetchBrapiEvents = async (variants) => {
   const events = cashDividends.map((item) => {
     const exDate = normalizeDateKey(item?.exDividendDate || item?.exDate)
     const dataCom = normalizeDateKey(item?.lastDatePrior || item?.lastDate) || (exDate ? previousBusinessDay(exDate) : '')
-    return {
-      type: normalizeType(item?.label),
+    return buildEvent({
+      typeRaw: item?.label,
       dataCom,
-      paymentDate: normalizeDateKey(item?.paymentDate),
-      amount: parseAmount(item?.rate),
-    }
-  }).filter((event) => event.dataCom && Number.isFinite(event.amount))
+      paymentDate: item?.paymentDate,
+      amount: item?.rate,
+    })
+  }).filter((event) => event?.dataCom && Number.isFinite(event.amount))
   const value = {
     events,
     currency: result?.currency || (variants.isBrazilian ? 'BRL' : null),
@@ -180,18 +199,18 @@ const parseStatusInvestHtml = (html) => {
     .replace(/<[^>]*>/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
-  const re = /\b(Dividendo|JCP|Rend\.\s*Tributado)\b\s+(\d{2}\/\d{2}\/\d{4})\s+(\d{2}\/\d{2}\/\d{4})\s+([0-9]+(?:[.,][0-9]+)*)/g
+  const re = /\b(Dividendo|Dividendos?|JCP|Rend\.\s*Tributado|Proventos?)\b\s+(\d{2}\/\d{2}\/\d{4})\s+(\d{2}\/\d{2}\/\d{4})\s+([0-9]+(?:[.,][0-9]+)*)/g
   const rows = []
   let match
   while ((match = re.exec(text)) !== null) {
-    rows.push({
-      type: normalizeType(match[1]),
-      dataCom: normalizeDateKey(match[2]),
-      paymentDate: normalizeDateKey(match[3]),
-      amount: parseAmount(match[4]),
-    })
+    rows.push(buildEvent({
+      typeRaw: match[1],
+      dataCom: match[2],
+      paymentDate: match[3],
+      amount: match[4],
+    }))
   }
-  return rows.filter((row) => row.dataCom && Number.isFinite(row.amount))
+  return rows.filter((row) => row?.dataCom && Number.isFinite(row.amount))
 }
 
 const fetchStatusInvestEvents = async (variants) => {
@@ -241,12 +260,12 @@ const fetchYahooEvents = async (variants, from, to) => {
   const payload = await response.json()
   const result = payload?.chart?.result?.[0]
   const dividendsObj = result?.events?.dividends || {}
-  const events = Object.values(dividendsObj).map((item) => ({
-    type: 'DIVIDEND',
+  const events = Object.values(dividendsObj).map((item) => buildEvent({
+    typeRaw: 'DIV',
     dataCom: item?.date ? new Date(item.date * 1000).toISOString().slice(0, 10) : '',
     paymentDate: '',
-    amount: parseAmount(item?.amount),
-  })).filter((event) => event.dataCom && Number.isFinite(event.amount))
+    amount: item?.amount,
+  })).filter((event) => event?.dataCom && Number.isFinite(event.amount))
   const value = { events, currency: result?.meta?.currency || null, source: 'yahoo' }
   return cacheSet(cacheKey, value)
 }
@@ -261,11 +280,16 @@ const getDividendsResult = async ({ ticker, from, to, includeEvents = false }) =
     throw error
   }
 
-  const providers = [
-    { name: 'brapi', fn: () => fetchBrapiEvents(variants) },
-    { name: 'statusinvest', fn: () => fetchStatusInvestEvents(variants) },
-    { name: 'yahoo', fn: () => fetchYahooEvents(variants, normalizedFrom, normalizedTo) },
-  ]
+  const providers = variants.isBrazilian
+    ? [
+      { name: 'statusinvest', fn: () => fetchStatusInvestEvents(variants) },
+      { name: 'brapi', fn: () => fetchBrapiEvents(variants) },
+      { name: 'yahoo', fn: () => fetchYahooEvents(variants, normalizedFrom, normalizedTo) },
+    ]
+    : [
+      { name: 'brapi', fn: () => fetchBrapiEvents(variants) },
+      { name: 'yahoo', fn: () => fetchYahooEvents(variants, normalizedFrom, normalizedTo) },
+    ]
 
   const errors = []
   let emptyResult = null

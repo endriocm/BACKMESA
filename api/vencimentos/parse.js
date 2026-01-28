@@ -6,6 +6,7 @@ const normalizeKey = (value) => String(value || '')
   .replace(/\s+/g, '')
   .replace(/[^a-z0-9]/g, '')
 
+
 const normalizeSheetName = (value) => String(value || '')
   .toLowerCase()
   .normalize('NFD')
@@ -27,6 +28,21 @@ const getValue = (row, keys) => {
     if (row[key] != null && row[key] !== '') return row[key]
   }
   return null
+}
+
+const normalizeCodigoCliente = (value) => {
+  if (value == null) return null
+  const raw = String(value).trim()
+  if (!raw) return null
+  const normalized = normalizeKey(raw)
+  if (normalized.includes('codigocliente') || normalized.includes('codigodocliente')) return null
+  return raw
+}
+
+const resolveCodigoCliente = (normalizedRow, fallbackValue) => {
+  const byHeader = getValue(normalizedRow, CODIGO_CLIENTE_KEYS)
+  if (byHeader != null && byHeader !== '') return String(byHeader).trim()
+  return normalizeCodigoCliente(fallbackValue)
 }
 
 const toNumber = (value) => {
@@ -51,6 +67,13 @@ const toNumber = (value) => {
   return Number.isFinite(parsed) ? parsed : null
 }
 
+const toDateOnlyString = (date) => {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return ''
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
 const CODIGO_CLIENTE_KEYS = ['codigocliente', 'codigodocliente', 'codcliente', 'clienteid', 'conta', 'numerodaconta', 'codconta']
 const CODIGO_OPERACAO_KEYS = ['codigooperacao', 'codigodaoperacao', 'codoperacao', 'operacaoid', 'idoperacao', 'operacao', 'codigo']
 
@@ -85,12 +108,12 @@ const buildOperationId = (payload) => {
 
 const normalizeDate = (value) => {
   if (!value) return ''
-  if (value instanceof Date) return value.toISOString().slice(0, 10)
+  if (value instanceof Date) return toDateOnlyString(value)
   if (typeof value === 'number' && XLSX?.SSF?.parse_date_code) {
     const parsed = XLSX.SSF.parse_date_code(value)
     if (parsed?.y && parsed?.m && parsed?.d) {
       const date = new Date(parsed.y, parsed.m - 1, parsed.d)
-      return date.toISOString().slice(0, 10)
+      return toDateOnlyString(date)
     }
   }
   if (typeof value === 'string') {
@@ -98,8 +121,7 @@ const normalizeDate = (value) => {
     const match = trimmed.match(/(\d{2})[\/-](\d{2})[\/-](\d{4})/)
     if (match) {
       const [, day, month, year] = match
-      const date = new Date(`${year}-${month}-${day}T00:00:00`)
-      if (!Number.isNaN(date.getTime())) return date.toISOString().slice(0, 10)
+      return `${year}-${month}-${day}`
     }
     if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) return trimmed.slice(0, 10)
   }
@@ -117,7 +139,7 @@ const mapLegType = (value) => {
   return null
 }
 
-const parsePosicaoConsolidada = (normalizedRow) => {
+const parsePosicaoConsolidada = (normalizedRow, fallbackRow) => {
   const hasLayout = normalizedRow.tipo1 || normalizedRow.quantidadeativa1 || normalizedRow.valordostrike1
   if (!hasLayout) return null
 
@@ -157,7 +179,7 @@ const parsePosicaoConsolidada = (normalizedRow) => {
   const custoUnitarioRaw = toNumber(getValue(normalizedRow, ['custounitariocliente']))
   const custoUnitario = custoUnitarioRaw > 0 ? custoUnitarioRaw : spotInicial
 
-  const codigoCliente = getValue(normalizedRow, CODIGO_CLIENTE_KEYS)
+  const codigoCliente = resolveCodigoCliente(normalizedRow, fallbackRow?.[0])
   const codigoOperacao = getValue(normalizedRow, CODIGO_OPERACAO_KEYS)
   const clienteNome = getValue(normalizedRow, ['cliente', 'nomecliente'])
   const clienteLabel = clienteNome || codigoCliente
@@ -243,23 +265,26 @@ const parseBuffer = (buffer) => {
   const sheetName = pickSheetName(workbook)
   const sheet = workbook.Sheets[sheetName]
   const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' })
+  const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false })
+  const rowOffset = rawRows.length > rows.length ? 1 : 0
 
-  return rows.map((row) => {
+  return rows.map((row, index) => {
+    const fallbackRow = rawRows?.[rowOffset + index] || []
     const normalizedRow = Object.keys(row).reduce((acc, key) => {
       acc[normalizeKey(key)] = row[key]
       return acc
     }, {})
 
-    const posicaoRow = parsePosicaoConsolidada(normalizedRow)
+    const posicaoRow = parsePosicaoConsolidada(normalizedRow, fallbackRow)
     if (posicaoRow) return posicaoRow
 
     const dataRegistro = normalizeDate(getValue(normalizedRow, ['dataregistro', 'dataderegistro', 'dataentrada', 'datainicio', 'entrada']))
     const dataVencimento = normalizeDate(getValue(normalizedRow, ['datavencimento', 'datadevencimento', 'datafim', 'vencimento']))
 
-    const quantidade = toNumber(getValue(normalizedRow, ['quantidade', 'qtd', 'lote']))
+    const quantidade = toNumber(getValue(normalizedRow, ['quantidade', 'qtd', 'lote', 'quantidadeacoes', 'quantidadeacao', 'qtdacoes', 'qtdacao', 'estoque', 'posicao']))
     const pernas = parseLegs(normalizedRow)
     const columnLegs = parseColumnLegs(normalizedRow, quantidade)
-    const codigoCliente = getValue(normalizedRow, CODIGO_CLIENTE_KEYS)
+    const codigoCliente = resolveCodigoCliente(normalizedRow, fallbackRow?.[0])
     const codigoOperacao = getValue(normalizedRow, CODIGO_OPERACAO_KEYS)
     const clienteNome = getValue(normalizedRow, ['cliente', 'nomecliente'])
     const clienteLabel = clienteNome || codigoCliente
