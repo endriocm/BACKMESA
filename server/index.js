@@ -2,6 +2,7 @@ const express = require('express')
 const cors = require('cors')
 const multer = require('multer')
 const XLSX = require('xlsx')
+const { getBrapiToken, getDividendsResult } = require('../api/lib/dividends')
 
 const PORT = process.env.PORT || 4170
 
@@ -260,6 +261,28 @@ app.get('/api/health', (_req, res) => {
   res.json({ ok: true })
 })
 
+app.get('/api/dividends', async (req, res) => {
+  const { ticker, from, to, debug } = req.query || {}
+  if (!ticker || !from || !to) {
+    res.status(400).json({ error: 'Parametros invalidos.' })
+    return
+  }
+  try {
+    const result = await getDividendsResult({
+      ticker,
+      from,
+      to,
+      includeEvents: debug === '1' || debug === 'true',
+    })
+    res.json(result)
+  } catch (error) {
+    res.status(error?.status || 502).json({
+      error: 'Falha ao buscar dividendos.',
+      providers: error?.providers || [],
+    })
+  }
+})
+
 app.get('/api/quotes', async (req, res) => {
   const { symbol, startDate, endDate, start, end } = req.query || {}
   if (!symbol || (!startDate && !start) || (!endDate && !end)) {
@@ -281,8 +304,6 @@ app.get('/api/quotes', async (req, res) => {
     if (raw.endsWith('.SA')) return raw.replace('.SA', '')
     return raw
   }
-
-  const getBrapiToken = () => process.env.BRAPI_TOKEN || process.env.brapi_token || process.env.BRAPI_API_KEY
 
   const isBrazilianSymbol = (ticker) => {
     const raw = String(ticker || '').trim().toUpperCase()

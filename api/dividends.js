@@ -1,22 +1,4 @@
-const { normalizeTicker, normalizeDateKey, normalizeType, sumDividendsInRange } = require('./lib/dividends')
-
-const CACHE_TTL = 6 * 60 * 60 * 1000
-const cache = new Map()
-
-const cacheGet = (key) => {
-  const entry = cache.get(key)
-  if (!entry) return null
-  if (Date.now() - entry.timestamp > CACHE_TTL) {
-    cache.delete(key)
-    return null
-  }
-  return entry
-}
-
-const cacheSet = (key, value) => {
-  cache.set(key, { ...value, timestamp: Date.now() })
-  return value
-}
+const { getDividendsResult, normalizeDateKey, normalizeTicker } = require('./lib/dividends')
 
 const readJsonBody = (req) => new Promise((resolve, reject) => {
   let raw = ''
@@ -52,85 +34,7 @@ const mapWithConcurrency = async (items, limit, mapper) => {
   return results
 }
 
-const normalizeBrapiSymbol = (ticker) => {
-  if (!ticker) return ''
-  const raw = String(ticker).trim().toUpperCase()
-  if (raw.endsWith('.SA')) return raw.replace('.SA', '')
-  return raw
-}
-
-const isBrazilianSymbol = (ticker) => {
-  const raw = String(ticker || '').trim().toUpperCase()
-  return /^[A-Z]{4,6}\d{1,2}[A-Z]?$/.test(raw) || raw.endsWith('.SA')
-}
-
-const getBrapiToken = () => process.env.BRAPI_TOKEN || process.env.brapi_token || process.env.BRAPI_API_KEY
-
-const fetchBrapiEvents = async ({ ticker }) => {
-  const symbol = normalizeBrapiSymbol(ticker)
-  if (!symbol) return null
-  const brapiHeaders = {}
-  const brapiToken = getBrapiToken()
-  if (brapiToken) {
-    brapiHeaders.Authorization = `Bearer ${brapiToken}`
-  }
-  const url = `https://brapi.dev/api/quote/${encodeURIComponent(symbol)}?dividends=true`
-  const response = await fetch(url, { headers: brapiHeaders })
-  if (!response.ok) return null
-  const payload = await response.json()
-  const result = payload?.results?.[0]
-  const cashDividends = result?.dividendsData?.cashDividends || []
-  const events = cashDividends
-    .map((item) => {
-      const amount = Number(item?.rate || 0)
-      return {
-        type: normalizeType(item?.label),
-        dataCom: normalizeDateKey(item?.lastDatePrior),
-        amount,
-        paymentDate: item?.paymentDate || null,
-        approvedOn: item?.approvedOn || null,
-      }
-    })
-    .filter((event) => event.dataCom && Number.isFinite(event.amount))
-  return {
-    events,
-    currency: result?.currency || 'BRL',
-    source: 'brapi',
-  }
-}
-
-const getEventsByTicker = async (ticker) => {
-  const key = `events:${normalizeTicker(ticker)}`
-  const cached = cacheGet(key)
-  if (cached) {
-    return { ticker: normalizeTicker(ticker), ...cached, cached: true }
-  }
-  let result = null
-  if (isBrazilianSymbol(ticker)) {
-    result = await fetchBrapiEvents({ ticker })
-  }
-  const payload = result || { events: [], currency: null, source: 'none' }
-  cacheSet(key, payload)
-  return { ticker: normalizeTicker(ticker), ...payload, cached: false }
-}
-
-const buildResult = (request, eventPayload) => {
-  const normalized = normalizeTicker(request?.ticker)
-  const from = request?.from
-  const to = request?.to
-  const key = `${normalized}|${normalizeDateKey(from)}|${normalizeDateKey(to)}`
-  const total = sumDividendsInRange(eventPayload?.events || [], from, to)
-  return {
-    key,
-    ticker: normalized,
-    from,
-    to,
-    total,
-    currency: eventPayload?.currency || null,
-    source: eventPayload?.source || 'none',
-    cached: eventPayload?.cached || false,
-  }
-}
+const buildKey = (ticker, from, to) => `${normalizeTicker(ticker)}|${normalizeDateKey(from)}|${normalizeDateKey(to)}`
 
 module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') {
@@ -149,12 +53,15 @@ module.exports = async (req, res) => {
       res.status(400).json({ error: 'Parametros invalidos.' })
       return
     }
+    const debug = req.query?.debug === '1' || req.query?.debug === 'true'
     try {
-      const eventsPayload = await getEventsByTicker(ticker)
-      const result = buildResult({ ticker, from, to }, eventsPayload)
+      const result = await getDividendsResult({ ticker, from, to, includeEvents: debug })
       res.status(200).json(result)
-    } catch {
-      res.status(500).json({ error: 'Falha ao buscar dividendos.' })
+    } catch (error) {
+      res.status(error?.status || 502).json({
+        error: 'Falha ao buscar dividendos.',
+        providers: error?.providers || [],
+      })
     }
     return
   }
@@ -171,28 +78,40 @@ module.exports = async (req, res) => {
       res.status(400).json({ error: 'Lista vazia.' })
       return
     }
-    const validTickers = Array.from(new Set(
-      requests
-        .filter((request) => request?.ticker)
-        .map((request) => normalizeTicker(request.ticker))
-        .filter(Boolean),
-    ))
-    const payloads = await mapWithConcurrency(validTickers, 4, async (ticker) => [ticker, await getEventsByTicker(ticker)])
-    const payloadMap = new Map(payloads)
-    const results = requests.map((request) => {
+    const debug = body?.debug === true
+    const results = await mapWithConcurrency(requests, 4, async (request) => {
       if (!request?.ticker || !request?.from || !request?.to) {
         return {
-          key: `${normalizeTicker(request?.ticker)}|${normalizeDateKey(request?.from)}|${normalizeDateKey(request?.to)}`,
+          key: buildKey(request?.ticker, request?.from, request?.to),
           ticker: normalizeTicker(request?.ticker),
           from: request?.from,
           to: request?.to,
           total: 0,
           source: 'invalid',
-          cached: false,
         }
       }
-      const payload = payloadMap.get(normalizeTicker(request.ticker)) || { events: [], currency: null, source: 'none', cached: false }
-      return buildResult(request, payload)
+      try {
+        const result = await getDividendsResult({
+          ticker: request.ticker,
+          from: request.from,
+          to: request.to,
+          includeEvents: debug,
+        })
+        return {
+          key: buildKey(request.ticker, request.from, request.to),
+          ...result,
+        }
+      } catch (error) {
+        return {
+          key: buildKey(request.ticker, request.from, request.to),
+          ticker: normalizeTicker(request.ticker),
+          from: normalizeDateKey(request.from),
+          to: normalizeDateKey(request.to),
+          total: 0,
+          source: 'error',
+          error: error?.message || 'Falha ao buscar dividendos.',
+        }
+      }
     })
     res.status(200).json({ results })
   } catch {

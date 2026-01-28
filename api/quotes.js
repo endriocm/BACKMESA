@@ -13,7 +13,7 @@ const normalizeBrapiSymbol = (ticker) => {
   return raw
 }
 
-const getBrapiToken = () => process.env.BRAPI_TOKEN || process.env.brapi_token || process.env.BRAPI_API_KEY
+const { getBrapiToken } = require('./lib/dividends')
 
 const isBrazilianSymbol = (ticker) => {
   const raw = String(ticker || '').trim().toUpperCase()
