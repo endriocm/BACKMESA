@@ -9,7 +9,9 @@ import SelectMenu from '../components/SelectMenu'
 import TreeSelect from '../components/TreeSelect'
 import { vencimentos } from '../data/vencimento'
 import { formatCurrency, formatDate, formatNumber } from '../utils/format'
-import { fetchYahooMarketData } from '../services/marketData'
+import { normalizeDateKey } from '../utils/dateKey'
+import { fetchYahooMarketData, normalizeYahooSymbol } from '../services/marketData'
+import { buildDividendKey, fetchDividend, fetchDividendsBatch } from '../services/dividends'
 import { computeBarrierStatus, computeResult } from '../services/settlement'
 import { clearOverride, loadOverrides, saveOverrides, updateOverride } from '../services/overrides'
 import { parseWorkbook, parseWorkbookBuffer } from '../services/excel'
@@ -107,16 +109,6 @@ const formatUpdateError = (error, prefix = 'Falha ao atualizar') => {
   return `${prefix}${providerLabel}: ${detail}`
 }
 
-const normalizeDateKey = (value) => {
-  if (!value) return ''
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
 const formatMonthName = (year, month) => {
   const date = new Date(Number(year), Number(month) - 1, 1)
   if (Number.isNaN(date.getTime())) return `${month}/${year}`
@@ -212,6 +204,30 @@ const buildPagination = (current, total) => {
   return items
 }
 
+const buildDividendRequest = (operation) => {
+  const ticker = normalizeYahooSymbol(operation?.ativo)
+  const from = operation?.dataRegistro
+  const to = operation?.vencimento
+  if (!ticker || !from || !to) return null
+  return {
+    key: buildDividendKey(ticker, from, to),
+    ticker,
+    from,
+    to,
+  }
+}
+
+const applyDividendsToMarket = (market, dividend) => {
+  if (!dividend) return market
+  const total = Number(dividend.total ?? 0)
+  return {
+    ...market,
+    dividendsTotal: Number.isFinite(total) ? total : market?.dividendsTotal ?? 0,
+    dividendsSource: dividend.source || market?.dividendsSource,
+    dividendsCached: dividend.cached ?? market?.dividendsCached,
+  }
+}
+
 const fetchSpotPrice = async (ticker, { force = false } = {}) => {
   const key = String(ticker || '').trim().toUpperCase()
   if (!key) return null
@@ -301,17 +317,29 @@ const Vencimento = () => {
     let active = true
     const loadMarket = async () => {
       const next = {}
+      const dividendRequests = operations.map(buildDividendRequest).filter(Boolean)
+      let dividendMap = new Map()
+      if (dividendRequests.length) {
+        try {
+          const results = await fetchDividendsBatch(dividendRequests.map(({ ticker, from, to }) => ({ ticker, from, to })))
+          dividendMap = new Map(results.filter(Boolean).map((item) => [item.key, item]))
+        } catch {
+          dividendMap = new Map()
+        }
+      }
       for (const operation of operations) {
         if (!operation.ativo || !operation.dataRegistro || !operation.vencimento) continue
+        const dividendRequest = buildDividendRequest(operation)
+        const dividend = dividendRequest ? dividendMap.get(dividendRequest.key) : null
         try {
           const market = await fetchYahooMarketData({
             symbol: operation.ativo,
             startDate: operation.dataRegistro,
             endDate: operation.vencimento,
           })
-          next[operation.id] = market
+          next[operation.id] = applyDividendsToMarket(market, dividend)
         } catch {
-          next[operation.id] = {
+          const fallback = {
             close: operation.spotInicial,
             high: null,
             low: null,
@@ -319,6 +347,7 @@ const Vencimento = () => {
             lastUpdate: Date.now(),
             source: 'fallback',
           }
+          next[operation.id] = applyDividendsToMarket(fallback, dividend)
         }
       }
       if (active) setMarketMap(next)
@@ -344,7 +373,17 @@ const Vencimento = () => {
         startDate: operation.dataRegistro,
         endDate: operation.vencimento,
       })
-      setMarketMap((prev) => ({ ...prev, [operation.id]: market }))
+      let dividend = null
+      const dividendRequest = buildDividendRequest(operation)
+      if (dividendRequest) {
+        try {
+          dividend = await fetchDividend(dividendRequest)
+        } catch {
+          dividend = null
+        }
+      }
+      const marketWithDividends = applyDividendsToMarket(market, dividend)
+      setMarketMap((prev) => ({ ...prev, [operation.id]: marketWithDividends }))
       notify('Dados atualizados.', 'success')
     } catch (error) {
       notify(formatUpdateError(error), 'warning')
@@ -354,6 +393,17 @@ const Vencimento = () => {
   const handleRefreshAll = useCallback(async () => {
     setIsRefreshingAll(true)
     try {
+      const operationMap = new Map(operations.map((operation) => [operation.id, operation]))
+      const dividendRequests = operations.map(buildDividendRequest).filter(Boolean)
+      let dividendMap = new Map()
+      if (dividendRequests.length) {
+        try {
+          const results = await fetchDividendsBatch(dividendRequests.map(({ ticker, from, to }) => ({ ticker, from, to })))
+          dividendMap = new Map(results.filter(Boolean).map((item) => [item.key, item]))
+        } catch {
+          dividendMap = new Map()
+        }
+      }
       const updates = await mapWithConcurrency(
         operations,
         SPOT_CONCURRENCY,
@@ -374,7 +424,12 @@ const Vencimento = () => {
       setMarketMap((prev) => {
         const next = { ...prev }
         updates.forEach((update) => {
-          if (update?.id && update.market) next[update.id] = update.market
+          if (update?.id && update.market) {
+            const operation = operationMap.get(update.id)
+            const dividendRequest = operation ? buildDividendRequest(operation) : null
+            const dividend = dividendRequest ? dividendMap.get(dividendRequest.key) : null
+            next[update.id] = applyDividendsToMarket(update.market, dividend)
+          }
         })
         return next
       })
