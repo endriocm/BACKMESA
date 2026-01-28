@@ -105,9 +105,13 @@ const isCupomRecorrente = (estrutura) => {
 }
 
 export const computeResult = (operation, market, barrierStatus, override = {}) => {
-  const quantidade = Number(operation.quantidade || 0)
+  const qtyBaseRaw = operation.qtyBase ?? operation.quantidade ?? 0
+  const qtyBonusRaw = operation.qtyBonus ?? 0
+  const qtyBase = Math.max(0, Number(qtyBaseRaw || 0))
+  const qtyBonus = Math.max(0, Number(qtyBonusRaw || 0))
+  const qtyAtual = qtyBase + qtyBonus
   const custoUnitario = Number(operation.custoUnitario || 0)
-  const custoTotal = quantidade * custoUnitario
+  const custoTotal = qtyBase * custoUnitario
   const pagouManual = operation.pagou != null && operation.pagou !== '' ? Number(operation.pagou) : null
   const optionQtyList = (operation.pernas || [])
     .filter((leg) => ['CALL', 'PUT'].includes(String(leg?.tipo || '').toUpperCase()))
@@ -118,10 +122,10 @@ export const computeResult = (operation, market, barrierStatus, override = {}) =
   const optionEntryTotal = optionEntryUnit && optionQtyBase ? optionEntryUnit * optionQtyBase : 0
   const pagou = pagouManual != null
     ? pagouManual
-    : (!quantidade && optionEntryTotal ? optionEntryTotal : custoTotal)
+    : (!qtyBase && optionEntryTotal ? optionEntryTotal : custoTotal)
 
   const spotFinal = market?.close ?? operation.spotInicial ?? 0
-  const vendaAtivo = quantidade ? spotFinal * quantidade : 0
+  const vendaAtivoBruta = qtyAtual ? spotFinal * qtyAtual : 0
 
   let ganhoCall = 0
   let ganhoPut = 0
@@ -129,7 +133,7 @@ export const computeResult = (operation, market, barrierStatus, override = {}) =
   const payoff = (operation.pernas || []).reduce((sum, leg) => {
     if (!isLegActive(leg, barrierStatus)) return sum
     const strike = Number(leg.strike || 0)
-    const rawQty = Number(leg.quantidade || quantidade)
+    const rawQty = Number(leg.quantidade || qtyBase)
     if (!rawQty) return sum
     const qty = Math.abs(rawQty)
     const tipo = (leg.tipo || '').toUpperCase()
@@ -147,7 +151,7 @@ export const computeResult = (operation, market, barrierStatus, override = {}) =
     return sum + result
   }, 0)
 
-  const dividends = (market?.dividendsTotal || 0) * (quantidade || 0)
+  const dividends = (market?.dividendsTotal || 0) * (qtyAtual || 0)
   const cupomBase = override?.cupomManual != null && String(override.cupomManual).trim() !== ''
     ? override.cupomManual
     : operation.cupom
@@ -156,7 +160,7 @@ export const computeResult = (operation, market, barrierStatus, override = {}) =
   const rebateTotal = (operation.pernas || []).reduce((sum, leg) => {
     if (!leg?.rebate) return sum
     if (!isLegActive(leg, barrierStatus)) return sum
-    const rawQty = Number(leg.quantidade || quantidade)
+    const rawQty = Number(leg.quantidade || qtyBase)
     const qty = Math.abs(rawQty)
     return sum + Number(leg.rebate || 0) * qty
   }, 0)
@@ -172,12 +176,16 @@ export const computeResult = (operation, market, barrierStatus, override = {}) =
     if (!Number.isFinite(strike) || strike <= 0) return sum
     const liquidou = tipo === 'CALL' ? spotFinal >= strike : spotFinal <= strike
     if (!liquidou) return sum
-    const qty = resolveDebitQuantity(leg, quantidade)
+    const qty = resolveDebitQuantity(leg, qtyBase)
     if (!qty) return sum
     return sum + strike * qty
   }, 0)
 
-  const valorSaida = isCupomRecorrente(operation.estrutura) ? pagou : vendaAtivo
+  const shouldAdjustCupomVenda = isCupomRecorrente(operation.estrutura) && dividends > 0
+  const vendaAtivoAjustada = shouldAdjustCupomVenda ? vendaAtivoBruta - dividends : vendaAtivoBruta
+  const valorSaida = isCupomRecorrente(operation.estrutura)
+    ? (shouldAdjustCupomVenda ? vendaAtivoAjustada : pagou)
+    : vendaAtivoBruta
   let financeiroFinal = valorSaida - pagou + ganhosOpcoes + dividends + cupomTotal + rebateTotal
   if (!Number.isFinite(financeiroFinal) || (!pagou && operation.pl != null)) {
     financeiroFinal = Number(operation.pl || 0)
@@ -189,6 +197,11 @@ export const computeResult = (operation, market, barrierStatus, override = {}) =
   return {
     spotFinal,
     vendaAtivo: valorSaida,
+    vendaAtivoBruta,
+    vendaAtivoAjustada,
+    qtyBase,
+    qtyBonus,
+    qtyAtual,
     valorSaida,
     custoTotal,
     pagou,

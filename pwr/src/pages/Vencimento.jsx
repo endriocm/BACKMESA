@@ -109,6 +109,14 @@ const formatUpdateError = (error, prefix = 'Falha ao atualizar') => {
   return `${prefix}${providerLabel}: ${detail}`
 }
 
+const parseQuantity = (value) => {
+  if (value == null || value === '') return 0
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0
+  const cleaned = String(value).trim().replace(/\s+/g, '').replace(',', '.')
+  const parsed = Number(cleaned)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
 const formatMonthName = (year, month) => {
   const date = new Date(Number(year), Number(month) - 1, 1)
   if (Number.isNaN(date.getTime())) return `${month}/${year}`
@@ -290,7 +298,7 @@ const Vencimento = () => {
   const [overrides, setOverrides] = useState(() => loadOverrides())
   const [selectedReport, setSelectedReport] = useState(null)
   const [selectedOverride, setSelectedOverride] = useState(null)
-  const [overrideDraft, setOverrideDraft] = useState({ high: 'auto', low: 'auto', cupomManual: '' })
+  const [overrideDraft, setOverrideDraft] = useState({ high: 'auto', low: 'auto', cupomManual: '', qtyBonus: 0, bonusDate: '', bonusNote: '' })
   const [folderLabel, setFolderLabel] = useState('Nenhuma pasta vinculada')
   const [pendingFile, setPendingFile] = useState(null)
   const [isParsing, setIsParsing] = useState(false)
@@ -395,9 +403,14 @@ const Vencimento = () => {
     return operations
       .map((operation) => {
         const market = marketMap[operation.id]
-        const override = overrides[operation.id] || { high: 'auto', low: 'auto', cupomManual: '' }
+        const override = overrides[operation.id] || { high: 'auto', low: 'auto', cupomManual: '', qtyBonus: 0, bonusDate: '', bonusNote: '' }
+        const qtyBase = parseQuantity(operation.qtyBase ?? operation.quantidade ?? 0)
+        const qtyBonus = Math.max(0, parseQuantity(override.qtyBonus ?? operation.qtyBonus ?? 0))
+        const qtyAtual = Math.max(0, qtyBase + qtyBonus)
         const spotBase = resolveSpotBase(operation, market)
-        const operationWithSpot = spotBase != null ? { ...operation, spotInicial: spotBase } : operation
+        const operationWithSpot = spotBase != null
+          ? { ...operation, spotInicial: spotBase, qtyBase, qtyBonus, qtyAtual }
+          : { ...operation, qtyBase, qtyBonus, qtyAtual }
         const barrierStatus = computeBarrierStatus(operationWithSpot, market, override)
         const cupomManual = override?.cupomManual != null && String(override.cupomManual).trim() !== ''
           ? override.cupomManual
@@ -406,6 +419,9 @@ const Vencimento = () => {
         const result = computeResult(operationWithSpot, market, barrierStatus, override)
         return {
           ...operation,
+          qtyBase,
+          qtyBonus,
+          qtyAtual,
           market,
           spotBase,
           override,
@@ -511,7 +527,7 @@ const Vencimento = () => {
   }, [])
 
   const handleOverrideClick = useCallback((row) => {
-    const current = overrides[row.id] || { high: 'auto', low: 'auto', cupomManual: '' }
+    const current = overrides[row.id] || { high: 'auto', low: 'auto', cupomManual: '', qtyBonus: 0, bonusDate: '', bonusNote: '' }
     setOverrideDraft(current)
     setSelectedOverride(row)
   }, [overrides])
@@ -566,6 +582,21 @@ const Vencimento = () => {
             </button>
           </div>
         ),
+      },
+      {
+        key: 'qtyBase',
+        label: 'Qtd base',
+        render: (row) => formatNumber(row.qtyBase),
+      },
+      {
+        key: 'qtyBonus',
+        label: 'Bonificacao',
+        render: (row) => formatNumber(row.qtyBonus),
+      },
+      {
+        key: 'qtyAtual',
+        label: 'Qtd atual',
+        render: (row) => formatNumber(row.qtyAtual),
       },
       {
         key: 'valorEntrada',
@@ -794,7 +825,9 @@ const Vencimento = () => {
       summary: `<strong>${formatCurrency(row.result.financeiroFinal)}</strong> <span class="badge">${barrierBadge.label}</span>`,
       details: [
         { label: 'Spot', value: formatSpotValue(row.spotBase ?? row.spotInicial) },
-        { label: 'Quantidade', value: formatNumber(row.quantidade) },
+        { label: 'Quantidade base', value: formatNumber(row.qtyBase) },
+        { label: 'Bonificacao', value: formatNumber(row.qtyBonus) },
+        { label: 'Quantidade atual', value: formatNumber(row.qtyAtual) },
         { label: 'Pagou', value: formatCurrency(row.result.pagou) },
         { label: 'Financeiro final', value: formatCurrency(row.result.financeiroFinal) },
         { label: 'Ganho/Prejuizo', value: formatCurrency(row.result.ganho) },
@@ -1057,6 +1090,8 @@ const Vencimento = () => {
       <OverrideModal
         open={Boolean(selectedOverride)}
         value={overrideDraft}
+        qtyBase={selectedOverride?.qtyBase}
+        qtyAtual={selectedOverride?.qtyAtual}
         onClose={() => setSelectedOverride(null)}
         onChange={setOverrideDraft}
         onApply={() => {

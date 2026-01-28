@@ -90,8 +90,16 @@ const ReportModal = ({ open, onClose, row, onExport, onCopy, onRefresh }) => {
               <strong>{spotValue}</strong>
             </div>
             <div>
-              <span>Quantidade</span>
-              <strong>{formatNumber(row.quantidade)}</strong>
+              <span>Quantidade base</span>
+              <strong>{formatNumber(row.qtyBase ?? row.quantidade)}</strong>
+            </div>
+            <div>
+              <span>Bonificacao</span>
+              <strong>{formatNumber(row.qtyBonus ?? 0)}</strong>
+            </div>
+            <div>
+              <span>Quantidade atual</span>
+              <strong>{formatNumber(row.qtyAtual ?? row.quantidade)}</strong>
             </div>
             <div>
               <span>Custo total</span>
