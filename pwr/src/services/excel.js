@@ -153,6 +153,7 @@ const parsePosicaoConsolidada = (normalizedRow, fallbackRow, XLSX) => {
   }
 
   const spotInicial = toNumber(getValue(normalizedRow, ['valorativo']))
+  const quantidadeAtual = toNumber(getValue(normalizedRow, ['quantidadeatual', 'qtdatual', 'qtd_atual', 'posicaoatual', 'quantidadefinal', 'qtdeatual']))
   const custoUnitarioRaw = toNumber(getValue(normalizedRow, ['custounitariocliente']))
   const custoUnitario = custoUnitarioRaw > 0 ? custoUnitarioRaw : spotInicial
 
@@ -187,6 +188,7 @@ const parsePosicaoConsolidada = (normalizedRow, fallbackRow, XLSX) => {
     spotInicial: spotInicial ?? null,
     custoUnitario: custoUnitario ?? null,
     quantidade: quantidadeStock ?? 0,
+    quantidadeAtual: quantidadeAtual ?? null,
     cupom: getValue(normalizedRow, ['cupom', 'taxacupom']),
     pagou: toNumber(getValue(normalizedRow, ['pagou'])),
     pernas: legs,
@@ -281,6 +283,7 @@ const parseBuffer = (buffer, XLSX) => {
     const dataVencimento = normalizeDate(getValue(normalizedRow, ['datavencimento', 'datadevencimento', 'datafim', 'vencimento']), XLSX)
 
     const quantidade = toNumber(getValue(normalizedRow, ['quantidade', 'qtd', 'lote', 'quantidadeacoes', 'quantidadeacao', 'qtdacoes', 'qtdacao', 'estoque', 'posicao']))
+    const quantidadeAtual = toNumber(getValue(normalizedRow, ['quantidadeatual', 'qtdatual', 'qtd_atual', 'posicaoatual', 'quantidadefinal', 'qtdeatual']))
     const pernas = parseLegs(normalizedRow)
     const columnLegs = parseColumnLegs(normalizedRow, quantidade)
     const codigoCliente = resolveCodigoCliente(normalizedRow, fallbackRow?.[0])
@@ -314,6 +317,7 @@ const parseBuffer = (buffer, XLSX) => {
       spotInicial: toNumber(getValue(normalizedRow, ['spotinicial', 'spotentrada', 'spot', 'valordecompra', 'valorentrada'])),
       custoUnitario: toNumber(getValue(normalizedRow, ['custounitario', 'custounit', 'custo'])),
       quantidade: quantidade ?? 0,
+      quantidadeAtual: quantidadeAtual ?? null,
       cupom: getValue(normalizedRow, ['cupom', 'taxacupom']),
       pagou: toNumber(getValue(normalizedRow, ['pagou'])),
       pernas: pernas.length ? pernas : columnLegs,

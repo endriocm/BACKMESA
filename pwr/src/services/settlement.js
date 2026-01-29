@@ -7,6 +7,27 @@
   return parsed / 100
 }
 
+const toNumber = (value) => {
+  if (value == null || value === '') return null
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null
+  const raw = String(value).trim()
+  if (!raw) return null
+  let cleaned = raw.replace(/[^\d,.-]/g, '')
+  const hasComma = cleaned.includes(',')
+  const hasDot = cleaned.includes('.')
+  if (hasComma && hasDot) {
+    if (cleaned.lastIndexOf(',') > cleaned.lastIndexOf('.')) {
+      cleaned = cleaned.replace(/\./g, '').replace(/,/g, '.')
+    } else {
+      cleaned = cleaned.replace(/,/g, '')
+    }
+  } else if (hasComma) {
+    cleaned = cleaned.replace(/,/g, '.')
+  }
+  const parsed = Number(cleaned)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
 const resolveBarrierDirection = (type, barrierValue, spotInicial) => {
   const upper = (type || '').toUpperCase()
   if (upper.includes('UP') || upper.includes('UO') || upper.includes('UI')) return 'high'
@@ -109,7 +130,10 @@ export const computeResult = (operation, market, barrierStatus, override = {}) =
   const qtyBonusRaw = operation.qtyBonus ?? 0
   const qtyBase = Math.max(0, Number(qtyBaseRaw || 0))
   const qtyBonus = Math.max(0, Number(qtyBonusRaw || 0))
-  const qtyAtual = qtyBase + qtyBonus
+  const qtyAtualOverride = toNumber(operation.qtyAtual ?? operation.quantidadeAtual)
+  const hasQtyAtualOverride = qtyAtualOverride != null && qtyAtualOverride > 0
+  const qtyAtual = hasQtyAtualOverride ? qtyAtualOverride : qtyBase + qtyBonus
+  const qtyBonusResolved = hasQtyAtualOverride ? Math.max(0, qtyAtual - qtyBase) : qtyBonus
   const custoUnitario = Number(operation.custoUnitario || 0)
   const custoTotal = qtyBase * custoUnitario
   const pagouManual = operation.pagou != null && operation.pagou !== '' ? Number(operation.pagou) : null
@@ -127,6 +151,7 @@ export const computeResult = (operation, market, barrierStatus, override = {}) =
   const spotFinal = market?.close ?? operation.spotInicial ?? 0
   const vendaAtivoBruta = qtyAtual ? spotFinal * qtyAtual : 0
 
+  const isRecorrente = isCupomRecorrente(operation.estrutura)
   let ganhoCall = 0
   let ganhoPut = 0
 
@@ -152,10 +177,17 @@ export const computeResult = (operation, market, barrierStatus, override = {}) =
   }, 0)
 
   const dividends = (market?.dividendsTotal || 0) * (qtyAtual || 0)
-  const cupomBase = override?.cupomManual != null && String(override.cupomManual).trim() !== ''
-    ? override.cupomManual
-    : operation.cupom
-  const cupomTotal = custoTotal ? parsePercent(cupomBase) * custoTotal : 0
+  const manualCouponBRL = toNumber(override?.manualCouponBRL ?? override?.manualCouponBrl)
+  const legacyCoupon = override?.manualCouponPct ?? override?.cupomManual ?? override?.cupomManualPct
+  const legacyRaw = legacyCoupon != null && String(legacyCoupon).trim() !== '' ? String(legacyCoupon).trim() : null
+  const legacyConvertible = legacyRaw && legacyRaw.includes('%') && custoTotal
+  const legacyNeedsInput = Boolean(legacyRaw && !legacyConvertible)
+  const legacyConverted = Boolean(legacyConvertible)
+  const cupomTotal = manualCouponBRL != null
+    ? manualCouponBRL
+    : legacyConvertible
+      ? parsePercent(legacyRaw) * custoTotal
+      : (custoTotal ? parsePercent(operation.cupom) * custoTotal : 0)
 
   const rebateTotal = (operation.pernas || []).reduce((sum, leg) => {
     if (!leg?.rebate) return sum
@@ -165,7 +197,11 @@ export const computeResult = (operation, market, barrierStatus, override = {}) =
     return sum + Number(leg.rebate || 0) * qty
   }, 0)
 
-  const ganhosOpcoes = ganhoCall + ganhoPut
+  if (isRecorrente) {
+    ganhoCall = 0
+    ganhoPut = 0
+  }
+  const ganhosOpcoes = isRecorrente ? 0 : (ganhoCall + ganhoPut)
 
   const debito = (operation.pernas || []).reduce((sum, leg) => {
     if (!isLegActive(leg, barrierStatus)) return sum
@@ -200,19 +236,23 @@ export const computeResult = (operation, market, barrierStatus, override = {}) =
     vendaAtivoBruta,
     vendaAtivoAjustada,
     qtyBase,
-    qtyBonus,
+    qtyBonus: qtyBonusResolved,
     qtyAtual,
     valorSaida,
     custoTotal,
     pagou,
     valorEntrada: pagou,
     debito: Number.isFinite(debito) ? debito : 0,
-    payoff,
+    payoff: isRecorrente ? 0 : payoff,
     ganhoCall,
     ganhoPut,
     ganhosOpcoes,
+    optionsSuppressed: isRecorrente,
     dividends,
     cupomTotal,
+    cupomSource: manualCouponBRL != null ? 'manual-brl' : legacyConverted ? 'legacy-percent' : legacyNeedsInput ? 'legacy-needs-input' : 'auto',
+    cupomLegacyNeedsInput: legacyNeedsInput,
+    cupomLegacyConverted: legacyConverted,
     rebateTotal,
     financeiroFinal,
     ganho,

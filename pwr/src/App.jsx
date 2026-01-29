@@ -4,6 +4,7 @@ import Topbar from './components/Topbar'
 import ToastProvider from './components/ToastProvider'
 import { useHashRoute } from './hooks/useHashRoute'
 import { routeTitles } from './data/navigation'
+import { GlobalFilterProvider } from './contexts/GlobalFilterContext'
 
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const RevenueStructured = lazy(() => import('./pages/RevenueStructured'))
@@ -71,27 +72,29 @@ function App() {
 
   return (
     <ToastProvider>
-      <div className="app-shell">
-        <Sidebar
-          currentPath={resolvedPath}
-          onNavigate={() => setSidebarOpen(false)}
-          isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
-        />
-        <div className="app-main">
-          <Topbar
-            title={title}
-            breadcrumbs={breadcrumbs}
-            onToggleSidebar={() => setSidebarOpen(true)}
+      <GlobalFilterProvider>
+        <div className="app-shell">
+          <Sidebar
             currentPath={resolvedPath}
+            onNavigate={() => setSidebarOpen(false)}
+            isOpen={sidebarOpen}
+            onClose={() => setSidebarOpen(false)}
           />
-          <main className="page-content">
-            <Suspense fallback={<LoadingFallback />}>
-              <CurrentPage />
-            </Suspense>
-          </main>
+          <div className="app-main">
+            <Topbar
+              title={title}
+              breadcrumbs={breadcrumbs}
+              onToggleSidebar={() => setSidebarOpen(true)}
+              currentPath={resolvedPath}
+            />
+            <main className="page-content">
+              <Suspense fallback={<LoadingFallback />}>
+                <CurrentPage />
+              </Suspense>
+            </main>
+          </div>
         </div>
-      </div>
+      </GlobalFilterProvider>
     </ToastProvider>
   )
 }

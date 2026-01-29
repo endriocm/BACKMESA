@@ -1,38 +1,67 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import Icon from './Icons'
-import { syncSteps, syncResultsMock } from '../data/revenue'
 
-const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+const DEFAULT_STEPS = [
+  'Selecionar fonte',
+  'Validar arquivos',
+  'Processar linhas',
+  'Consolidar base',
+  'Concluir',
+]
 
-const SyncPanel = ({ label = 'Sincronizacao inteligente', helper = 'Escolha a fonte e acompanhe o processamento.' }) => {
+const SyncPanel = ({
+  label = 'Sincronizacao inteligente',
+  helper = 'Escolha a fonte e acompanhe o processamento.',
+  onSync,
+  onFileSelected,
+  result,
+  running: runningProp,
+  steps = DEFAULT_STEPS,
+  accept = '.xlsx,.xls',
+  directory = false,
+}) => {
   const [stage, setStage] = useState(0)
-  const [running, setRunning] = useState(false)
-  const [done, setDone] = useState(false)
-  const [result, setResult] = useState(null)
+  const [runningInternal, setRunningInternal] = useState(false)
+  const [selectedFile, setSelectedFile] = useState(null)
+  const inputIdRef = useRef(`sync-${Math.random().toString(36).slice(2)}`)
+  const isControlled = typeof runningProp === 'boolean'
+  const running = isControlled ? runningProp : runningInternal
 
   const startSync = async () => {
-    if (running) return
-    setRunning(true)
-    setDone(false)
-    setResult(null)
-    for (let i = 0; i < syncSteps.length; i += 1) {
-      setStage(i)
-      // simulate step duration
-      await delay(500)
+    if (!onSync || running) return
+    if (!isControlled) setRunningInternal(true)
+    try {
+      await onSync(selectedFile)
+    } finally {
+      if (!isControlled) setRunningInternal(false)
     }
-    await delay(400)
-    setRunning(false)
-    setDone(true)
-    setResult(syncResultsMock)
   }
 
-  const progress = useMemo(() => ((stage + (running ? 0.4 : 1)) / syncSteps.length) * 100, [stage, running])
+  const progress = useMemo(() => ((stage + (running ? 0.4 : 1)) / steps.length) * 100, [stage, running, steps.length])
 
   useEffect(() => {
-    if (!running && !done) {
+    if (!running) {
       setStage(0)
+      return
     }
-  }, [running, done])
+    let active = true
+    let current = 0
+    setStage(0)
+    const timer = setInterval(() => {
+      if (!active) return
+      current = Math.min(current + 1, steps.length - 1)
+      setStage(current)
+      if (current >= steps.length - 1) {
+        clearInterval(timer)
+      }
+    }, 450)
+    return () => {
+      active = false
+      clearInterval(timer)
+    }
+  }, [running, steps.length])
+
+  const canSync = Boolean(onSync) && (directory || Boolean(selectedFile))
 
   return (
     <section className="panel sync-panel">
@@ -42,22 +71,40 @@ const SyncPanel = ({ label = 'Sincronizacao inteligente', helper = 'Escolha a fo
           <p className="muted">{helper}</p>
         </div>
         <div className="panel-actions">
-          <label className="btn btn-secondary" htmlFor="folder-select">
+          <label className="btn btn-secondary" htmlFor={inputIdRef.current}>
             <Icon name="upload" size={16} />
-            Selecionar pasta
+            {directory ? 'Selecionar pasta' : 'Selecionar arquivo'}
           </label>
-          <input id="folder-select" type="file" webkitdirectory="true" directory="true" hidden />
-          <button className="btn btn-primary" type="button" onClick={startSync}>
+          <input
+            id={inputIdRef.current}
+            type="file"
+            accept={accept}
+            onChange={(event) => {
+              const fileList = Array.from(event.target.files || [])
+              const file = fileList[0] || null
+              setSelectedFile(file)
+              onFileSelected?.(file)
+            }}
+            multiple={directory}
+            webkitdirectory={directory ? 'true' : undefined}
+            directory={directory ? 'true' : undefined}
+            hidden
+          />
+          <button className="btn btn-primary" type="button" onClick={startSync} disabled={!canSync || running}>
             <Icon name="sync" size={16} />
             {running ? 'Processando' : 'Sincronizar'}
           </button>
         </div>
       </div>
 
+      {selectedFile ? (
+        <div className="muted">Arquivo selecionado: {selectedFile.name}</div>
+      ) : null}
+
       <div className="steps">
-        {syncSteps.map((step, index) => {
+        {steps.map((step, index) => {
           const isActive = index === stage && running
-          const isDone = done || index < stage
+          const isDone = (!running && result) || index < stage
           return (
             <div key={step} className={`step ${isActive ? 'active' : ''} ${isDone ? 'done' : ''}`}>
               <div className="step-icon">

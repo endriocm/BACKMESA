@@ -1,38 +1,68 @@
-﻿import { useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import PageHeader from '../components/PageHeader'
 import SyncPanel from '../components/SyncPanel'
 import DataTable from '../components/DataTable'
-import Badge from '../components/Badge'
 import Icon from '../components/Icons'
-import { vinculos, vinculoResumo } from '../data/tags'
+import { formatDate } from '../utils/format'
+import { parseTagsXlsx, loadTags, saveTags } from '../services/tags'
+import { useGlobalFilters } from '../contexts/GlobalFilterContext'
+import { useToast } from '../hooks/useToast'
 
 const Tags = () => {
+  const { notify } = useToast()
+  const { userKey, refreshTags } = useGlobalFilters()
   const [query, setQuery] = useState('')
+  const [running, setRunning] = useState(false)
+  const [payload, setPayload] = useState(() => loadTags(userKey))
+  const [result, setResult] = useState(payload?.stats || null)
+
+  useEffect(() => {
+    const loaded = loadTags(userKey)
+    setPayload(loaded)
+    setResult(loaded?.stats || null)
+  }, [userKey])
 
   const rows = useMemo(() => {
-    return vinculos.filter((item) => {
+    const items = payload?.rows || []
+    return items.filter((item) => {
       const input = query.toLowerCase()
       if (!input) return true
-      return `${item.cliente} ${item.assessor} ${item.broker}`.toLowerCase().includes(input)
+      return `${item.cliente} ${item.nomeCliente} ${item.assessor} ${item.broker}`.toLowerCase().includes(input)
     })
-  }, [query])
+  }, [payload, query])
 
   const columns = useMemo(
     () => [
-      { key: 'cliente', label: 'Cliente' },
-      { key: 'assessor', label: 'Assessor' },
-      { key: 'broker', label: 'Broker' },
-      {
-        key: 'status',
-        label: 'Status',
-        render: (row) => {
-          const tone = row.status === 'ativo' ? 'green' : row.status === 'pendente' ? 'amber' : 'violet'
-          return <Badge tone={tone}>{row.status}</Badge>
-        },
-      },
+      { key: 'cliente', label: 'Codigo cliente', render: (row) => row.cliente || '—' },
+      { key: 'nomeCliente', label: 'Nome do cliente', render: (row) => row.nomeCliente || row.cliente || '—' },
+      { key: 'assessor', label: 'Assessor', render: (row) => row.assessor || '—' },
+      { key: 'broker', label: 'Broker', render: (row) => row.broker || '—' },
     ],
     [],
   )
+
+  const lastImportedAt = payload?.importedAt ? formatDate(new Date(payload.importedAt)) : '—'
+
+  const handleSync = async (file) => {
+    if (!file) {
+      notify('Selecione o Tags.xlsx.', 'warning')
+      return
+    }
+    setRunning(true)
+    try {
+      const parsed = await parseTagsXlsx(file)
+      const saved = saveTags(userKey, parsed)
+      setPayload(saved)
+      setResult(saved?.stats || parsed.stats || null)
+      refreshTags()
+      window.dispatchEvent(new CustomEvent('pwr:tags-updated', { detail: { userKey } }))
+      notify('Tags importadas com sucesso.', 'success')
+    } catch {
+      notify('Falha ao importar Tags.xlsx.', 'warning')
+    } finally {
+      setRunning(false)
+    }
+  }
 
   return (
     <div className="page">
@@ -40,14 +70,21 @@ const Tags = () => {
         title="Tags e Vinculos"
         subtitle="Hierarquia Cliente -> Assessor -> Broker com visibilidade total."
         meta={[
-          { label: 'Total vinculos', value: vinculoResumo.total },
-          { label: 'Atualizados', value: vinculoResumo.atualizados },
-          { label: 'Pendentes', value: vinculoResumo.pendentes },
+          { label: 'Total vinculos', value: payload?.rows?.length || 0 },
+          { label: 'Ultima sync', value: lastImportedAt },
+          { label: 'Avisos', value: result?.avisos ?? 0 },
         ]}
         actions={[{ label: 'Atualizar vinculos', icon: 'sync' }]}
       />
 
-      <SyncPanel label="Sincronizacao de Vinculos" helper="Importe o arquivo mestre para atualizar tags." />
+      <SyncPanel
+        label="Sincronizacao de Vinculos"
+        helper="Importe o Tags.xlsx para atualizar as tags reais."
+        onSync={handleSync}
+        running={running}
+        result={result}
+        accept=".xlsx,.xls"
+      />
 
       <section className="panel">
         <div className="panel-head">
@@ -61,17 +98,17 @@ const Tags = () => {
             <div key={`${item.cliente}-${item.assessor}`} className="hierarchy-card">
               <div className="hierarchy-tier">
                 <span>Cliente</span>
-                <strong>{item.cliente}</strong>
+                <strong>{item.nomeCliente || item.cliente || '—'}</strong>
+                {item.cliente ? <small className="muted">Codigo {item.cliente}</small> : null}
               </div>
               <div className="hierarchy-tier">
                 <span>Assessor</span>
-                <strong>{item.assessor}</strong>
+                <strong>{item.assessor || '—'}</strong>
               </div>
               <div className="hierarchy-tier">
                 <span>Broker</span>
-                <strong>{item.broker}</strong>
+                <strong>{item.broker || '—'}</strong>
               </div>
-              <Badge tone={item.status === 'ativo' ? 'green' : 'amber'}>{item.status}</Badge>
             </div>
           ))}
         </div>

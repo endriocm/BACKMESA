@@ -284,6 +284,19 @@ button {
   gap: 12px;
 }
 
+.topbar-filter {
+  min-width: 180px;
+}
+
+.topbar-filter .select-trigger {
+  border-radius: 999px;
+  padding: 8px 12px;
+}
+
+.topbar-filter-menu {
+  min-width: 220px;
+}
+
 .search-pill {
   display: flex;
   align-items: center;

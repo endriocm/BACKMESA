@@ -63,18 +63,3 @@ export const receitaResumo = {
   duplicados: 6,
   avisos: 4,
 }
-
-export const syncSteps = [
-  'Selecionar fonte',
-  'Validar arquivos',
-  'Processar linhas',
-  'Consolidar base',
-  'Concluir',
-]
-
-export const syncResultsMock = {
-  importados: 142,
-  duplicados: 6,
-  rejeitados: 2,
-  avisos: 4,
-}

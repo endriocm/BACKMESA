@@ -17,9 +17,12 @@ import { clearOverride, loadOverrides, saveOverrides, updateOverride } from '../
 import { parseWorkbook, parseWorkbookBuffer } from '../services/excel'
 import { exportReportPdf } from '../services/pdf'
 import { getCurrentUserKey } from '../services/currentUser'
+import { enrichRow } from '../services/tags'
 import { clearLink, ensurePermission, isValidElectronPath, loadLink, saveLink } from '../services/vencimentoLink'
 import { clearLastImported, loadLastImported, saveLastImported } from '../services/vencimentoCache'
 import { useToast } from '../hooks/useToast'
+import { useGlobalFilters } from '../contexts/GlobalFilterContext'
+import { debugLog } from '../services/debug'
 
 const getStatus = (date) => {
   const target = new Date(date)
@@ -41,7 +44,7 @@ const getBarrierBadge = (status) => {
 }
 
 const buildCopySummary = (row) => {
-  const clienteLabel = row.codigoCliente || row.cliente || '-'
+  const clienteLabel = row.nomeCliente || row.codigoCliente || row.cliente || '-'
   return [
     `Cliente: ${clienteLabel}`,
     `Ativo: ${row.ativo}`,
@@ -327,14 +330,15 @@ const resolveSpotBase = (operation, market) => {
 
 const Vencimento = () => {
   const { notify } = useToast()
+  const { selectedBroker, clientCodeFilter, setClientCodeFilter, tagsIndex } = useGlobalFilters()
   const [userKey] = useState(() => getCurrentUserKey())
-  const [filters, setFilters] = useState({ search: '', broker: '', assessor: '', cliente: '', status: '', estrutura: '', vencimentos: [] })
+  const [filters, setFilters] = useState({ search: '', broker: '', assessor: '', status: '', estrutura: '', vencimentos: [] })
   const [operations, setOperations] = useState(vencimentos)
   const [marketMap, setMarketMap] = useState({})
-  const [overrides, setOverrides] = useState(() => loadOverrides())
+  const [overrides, setOverrides] = useState(() => loadOverrides(userKey))
   const [selectedReport, setSelectedReport] = useState(null)
   const [selectedOverride, setSelectedOverride] = useState(null)
-  const [overrideDraft, setOverrideDraft] = useState({ high: 'auto', low: 'auto', cupomManual: '', qtyBonus: 0, bonusDate: '', bonusNote: '' })
+  const [overrideDraft, setOverrideDraft] = useState({ high: 'auto', low: 'auto', manualCouponBRL: '', qtyBonus: 0, bonusDate: '', bonusNote: '' })
   const [linkMeta, setLinkMeta] = useState(null)
   const [cacheMeta, setCacheMeta] = useState(null)
   const [restoreStatus, setRestoreStatus] = useState({ state: 'idle', message: '' })
@@ -366,8 +370,14 @@ const Vencimento = () => {
   }, [pendingFile, linkMeta, cacheMeta])
 
   useEffect(() => {
-    saveOverrides(overrides)
-  }, [overrides])
+    if (!userKey) return
+    setOverrides(loadOverrides(userKey))
+  }, [userKey])
+
+  useEffect(() => {
+    if (!userKey) return
+    saveOverrides(userKey, overrides)
+  }, [overrides, userKey])
 
   const broadcastUpdate = useCallback((type, payload = {}) => {
     if (!userKey) return
@@ -438,6 +448,7 @@ const Vencimento = () => {
 
       if (!parsedRows) throw new Error('parse-empty')
       const withSpot = await attachSpotPrices(parsedRows)
+      debugLog('vencimento.restore.parse', { rows: withSpot.length, source: parseSource })
       setOperations(withSpot)
       const storedCache = saveLastImported(userKey, {
         rows: withSpot,
@@ -490,6 +501,7 @@ const Vencimento = () => {
     restoreRef.current.running = true
     setIsRestoring(true)
     setRestoreStatus({ state: 'restoring', message: 'Restaurando vinculo salvo...' })
+    debugLog('vencimento.restore.link', { source: link.source })
     try {
       if (link.source === 'electron') {
         if (!window?.electronAPI?.resolveFolder || !isValidElectronPath(link.folderPath)) {
@@ -546,6 +558,7 @@ const Vencimento = () => {
     const cached = loadLastImported(userKey)
     hydrateCache(cached)
     const link = await loadLink(userKey)
+    debugLog('vencimento.restore.storage', { hasCache: Boolean(cached?.rows?.length), linkSource: link?.source || null })
     setLinkMeta(link || null)
     setPermissionState(null)
     if (!link) {
@@ -656,12 +669,16 @@ const Vencimento = () => {
     }
   }, [operations])
 
-  const brokerOptions = useMemo(() => buildOptions(operations.map((item) => item.broker), 'Broker'), [operations])
-  const assessorOptions = useMemo(() => buildOptions(operations.map((item) => item.assessor), 'Assessor'), [operations])
-  const estruturaOptions = useMemo(() => buildOptions(operations.map((item) => item.estrutura), 'Estrutura'), [operations])
+  const enrichedOperations = useMemo(
+    () => operations.map((operation) => enrichRow(operation, tagsIndex)),
+    [operations, tagsIndex],
+  )
+  const brokerOptions = useMemo(() => buildOptions(enrichedOperations.map((item) => item.broker), 'Broker'), [enrichedOperations])
+  const assessorOptions = useMemo(() => buildOptions(enrichedOperations.map((item) => item.assessor), 'Assessor'), [enrichedOperations])
+  const estruturaOptions = useMemo(() => buildOptions(enrichedOperations.map((item) => item.estrutura), 'Estrutura'), [enrichedOperations])
   const { tree: vencimentoTree, allValues: vencimentoValues } = useMemo(
-    () => buildVencimentoTree(operations),
-    [operations],
+    () => buildVencimentoTree(enrichedOperations),
+    [enrichedOperations],
   )
 
   const handleRefreshData = useCallback(async (operation) => {
@@ -690,22 +707,38 @@ const Vencimento = () => {
 
   const rows = useMemo(() => {
     const vencimentoSet = new Set(filters.vencimentos)
-    return operations
+    return enrichedOperations
       .map((operation) => {
         const market = marketMap[operation.id]
-        const override = overrides[operation.id] || { high: 'auto', low: 'auto', cupomManual: '', qtyBonus: 0, bonusDate: '', bonusNote: '' }
+        const override = overrides[operation.id] || { high: 'auto', low: 'auto', manualCouponBRL: null, manualCouponPct: null, qtyBonus: 0, bonusDate: '', bonusNote: '' }
         const qtyBase = parseQuantity(operation.qtyBase ?? operation.quantidade ?? 0)
-        const qtyBonus = Math.max(0, parseQuantity(override.qtyBonus ?? operation.qtyBonus ?? 0))
-        const qtyAtual = Math.max(0, qtyBase + qtyBonus)
+        const qtyAtualRaw = operation.qtyAtual ?? operation.quantidadeAtual
+        const qtyAtualSource = parseQuantity(qtyAtualRaw)
+        const hasQtyAtualSource = qtyAtualRaw != null && qtyAtualSource > 0
+        const overrideBonus = parseQuantity(override.qtyBonus ?? 0)
+        const hasOverrideBonus = overrideBonus > 0
+        const qtyBonus = hasOverrideBonus
+          ? overrideBonus
+          : hasQtyAtualSource
+            ? Math.max(0, qtyAtualSource - qtyBase)
+            : 0
+        const qtyAtual = hasOverrideBonus
+          ? Math.max(0, qtyBase + qtyBonus)
+          : hasQtyAtualSource
+            ? qtyAtualSource
+            : Math.max(0, qtyBase + qtyBonus)
         const spotBase = resolveSpotBase(operation, market)
         const operationWithSpot = spotBase != null
           ? { ...operation, spotInicial: spotBase, qtyBase, qtyBonus, qtyAtual }
           : { ...operation, qtyBase, qtyBonus, qtyAtual }
         const barrierStatus = computeBarrierStatus(operationWithSpot, market, override)
-        const cupomManual = override?.cupomManual != null && String(override.cupomManual).trim() !== ''
-          ? override.cupomManual
+        const manualCouponBRL = override?.manualCouponBRL != null && Number.isFinite(Number(override.manualCouponBRL))
+          ? Number(override.manualCouponBRL)
           : null
-        const cupomResolved = cupomManual ?? operation.cupom
+        const legacyCouponLabel = override?.manualCouponPct || null
+        const cupomResolved = manualCouponBRL != null
+          ? formatCurrency(manualCouponBRL)
+          : (legacyCouponLabel || operation.cupom || 'N/A')
         const result = computeResult(operationWithSpot, market, barrierStatus, override)
         return {
           ...operation,
@@ -715,7 +748,8 @@ const Vencimento = () => {
           market,
           spotBase,
           override,
-          cupomManual,
+          manualCouponBRL,
+          legacyCouponLabel,
           cupomResolved,
           barrierStatus,
           result,
@@ -724,18 +758,21 @@ const Vencimento = () => {
       })
       .filter((entry) => {
         const query = filters.search.toLowerCase()
-        const searchBase = `${entry.codigoCliente || entry.cliente || ''} ${entry.ativo || ''} ${entry.estrutura || ''} ${entry.assessor || ''} ${entry.broker || ''}`.toLowerCase()
+        const searchBase = `${entry.codigoCliente || ''} ${entry.cliente || ''} ${entry.nomeCliente || ''} ${entry.ativo || ''} ${entry.estrutura || ''} ${entry.assessor || ''} ${entry.broker || ''}`.toLowerCase()
         if (query && !searchBase.includes(query)) return false
+        if (selectedBroker && entry.broker !== selectedBroker) return false
         if (filters.broker && entry.broker !== filters.broker) return false
         if (filters.assessor && entry.assessor !== filters.assessor) return false
-        const clienteMatch = entry.codigoCliente || entry.cliente
-        if (filters.cliente && clienteMatch !== filters.cliente) return false
+        if (clientCodeFilter) {
+          const clienteMatch = String(entry.codigoCliente || entry.cliente || '').trim()
+          if (clienteMatch !== String(clientCodeFilter).trim()) return false
+        }
         if (filters.estrutura && entry.estrutura !== filters.estrutura) return false
         if (vencimentoSet.size && !vencimentoSet.has(normalizeDateKey(entry.vencimento))) return false
         if (filters.status && entry.status.key !== filters.status) return false
         return true
       })
-  }, [filters, operations, marketMap, overrides])
+  }, [clientCodeFilter, enrichedOperations, filters, marketMap, overrides, selectedBroker])
 
   const pageCount = useMemo(() => Math.max(1, Math.ceil(rows.length / PAGE_SIZE)), [rows.length])
   const paginationItems = useMemo(() => buildPagination(currentPage, pageCount), [currentPage, pageCount])
@@ -744,7 +781,7 @@ const Vencimento = () => {
   }, [pageCount])
   useEffect(() => {
     setCurrentPage(1)
-  }, [filters, operations])
+  }, [filters, operations, selectedBroker, clientCodeFilter])
 
   const pageStart = (currentPage - 1) * PAGE_SIZE
   const visibleRows = useMemo(() => rows.slice(pageStart, pageStart + PAGE_SIZE), [rows, pageStart])
@@ -817,8 +854,8 @@ const Vencimento = () => {
   }, [])
 
   const handleOverrideClick = useCallback((row) => {
-    const current = overrides[row.id] || { high: 'auto', low: 'auto', cupomManual: '', qtyBonus: 0, bonusDate: '', bonusNote: '' }
-    setOverrideDraft(current)
+    const current = overrides[row.id] || { high: 'auto', low: 'auto', manualCouponBRL: '', qtyBonus: 0, bonusDate: '', bonusNote: '' }
+    setOverrideDraft({ ...current, manualCouponBRL: current.manualCouponBRL ?? '' })
     setSelectedOverride(row)
   }, [overrides])
 
@@ -924,7 +961,11 @@ const Vencimento = () => {
       {
         key: 'ganhosOpcoes',
         label: 'Ganho nas opcoes',
-        render: (row) => formatCurrency(row.result.ganhosOpcoes),
+        render: (row) => (
+          row.result.optionsSuppressed
+            ? <span className="muted">N/A</span>
+            : formatCurrency(row.result.ganhosOpcoes)
+        ),
       },
       {
         key: 'dividendos',
@@ -935,12 +976,20 @@ const Vencimento = () => {
         key: 'cupom',
         label: 'Cupom',
         render: (row) => {
-          const manual = row.cupomManual != null
+          const manual = row.manualCouponBRL != null
+          const legacyNeedsInput = row.result.cupomLegacyNeedsInput
+          const legacyConverted = row.result.cupomLegacyConverted
           const label = row.cupomResolved || row.cupom || 'N/A'
           return (
             <div className="cell-stack">
               <strong>{label}</strong>
-              {manual ? <small>Manual</small> : <small>Automatico</small>}
+              {legacyNeedsInput
+                ? <small className="muted">Precisa reentrada</small>
+                : manual
+                  ? <small>Manual</small>
+                  : legacyConverted
+                    ? <small>Legado</small>
+                    : <small>Automatico</small>}
             </div>
           )
         },
@@ -1000,12 +1049,12 @@ const Vencimento = () => {
     : ''
 
   const chips = [
-    { key: 'broker', label: filters.broker },
-    { key: 'assessor', label: filters.assessor },
-    { key: 'cliente', label: filters.cliente },
-    { key: 'estrutura', label: filters.estrutura },
-    { key: 'vencimentos', label: vencimentoChipLabel },
-    { key: 'status', label: filters.status },
+    { key: 'broker', label: filters.broker, onClear: () => setFilters((prev) => ({ ...prev, broker: '' })) },
+    { key: 'assessor', label: filters.assessor, onClear: () => setFilters((prev) => ({ ...prev, assessor: '' })) },
+    { key: 'clientCode', label: clientCodeFilter, onClear: () => setClientCodeFilter('') },
+    { key: 'estrutura', label: filters.estrutura, onClear: () => setFilters((prev) => ({ ...prev, estrutura: '' })) },
+    { key: 'vencimentos', label: vencimentoChipLabel, onClear: () => setFilters((prev) => ({ ...prev, vencimentos: [] })) },
+    { key: 'status', label: filters.status, onClear: () => setFilters((prev) => ({ ...prev, status: '' })) },
   ].filter((chip) => chip.label)
 
   const handlePickFolder = useCallback(async () => {
@@ -1113,7 +1162,7 @@ const Vencimento = () => {
 
   const handleExportPdf = (row) => {
     const barrierBadge = getBarrierBadge(row.barrierStatus)
-    const clienteLabel = row.cliente || row.codigoCliente || 'Cliente'
+    const clienteLabel = row.nomeCliente || row.cliente || row.codigoCliente || 'Cliente'
     const payload = {
       title: `Relatorio - ${clienteLabel}`,
       header: `${row.ativo} | ${row.estrutura} | ${formatDate(row.vencimento)}`,
@@ -1128,9 +1177,9 @@ const Vencimento = () => {
         { label: 'Ganho/Prejuizo', value: formatCurrency(row.result.ganho) },
         { label: 'Ganho %', value: `${(row.result.percent * 100).toFixed(2)}%` },
         { label: 'Venda do ativo', value: formatCurrency(row.result.vendaAtivo) },
-        { label: 'Ganho na Call', value: formatCurrency(row.result.ganhoCall) },
-        { label: 'Ganho na Put', value: formatCurrency(row.result.ganhoPut) },
-        { label: 'Ganhos nas opcoes', value: formatCurrency(row.result.ganhosOpcoes) },
+        { label: 'Ganho na Call', value: row.result.optionsSuppressed ? 'N/A' : formatCurrency(row.result.ganhoCall) },
+        { label: 'Ganho na Put', value: row.result.optionsSuppressed ? 'N/A' : formatCurrency(row.result.ganhoPut) },
+        { label: 'Ganhos nas opcoes', value: row.result.optionsSuppressed ? 'N/A' : formatCurrency(row.result.ganhosOpcoes) },
         { label: 'Dividendos', value: formatCurrency(row.result.dividends) },
         { label: 'Cupom', value: formatCurrency(row.result.cupomTotal) },
         { label: 'Rebates', value: formatCurrency(row.result.rebateTotal) },
@@ -1146,7 +1195,7 @@ const Vencimento = () => {
       warnings: [
         row.market?.source !== 'yahoo' ? 'Cotacao em fallback.' : null,
         row.override?.high !== 'auto' || row.override?.low !== 'auto' ? 'Override manual aplicado.' : null,
-        row.cupomManual != null && String(row.cupomManual).trim() !== '' ? 'Cupom manual aplicado.' : null,
+        row.manualCouponBRL != null ? 'Cupom manual aplicado.' : null,
       ].filter(Boolean),
     }
     exportReportPdf(payload, `${clienteLabel}_${row.ativo}_${row.vencimento}`)
@@ -1273,7 +1322,12 @@ const Vencimento = () => {
             onChange={(value) => setFilters((prev) => ({ ...prev, vencimentos: value }))}
             placeholder="Vencimento da estrutura"
           />
-          <input className="input" placeholder="Cliente" value={filters.cliente} onChange={(event) => setFilters((prev) => ({ ...prev, cliente: event.target.value }))} />
+          <input
+            className="input"
+            placeholder="Codigo do cliente"
+            value={clientCodeFilter}
+            onChange={(event) => setClientCodeFilter(event.target.value)}
+          />
           <SelectMenu
             value={filters.status}
             options={[
@@ -1292,10 +1346,7 @@ const Vencimento = () => {
               <button
                 key={chip.key}
                 className="chip"
-                onClick={() => setFilters((prev) => ({
-                  ...prev,
-                  [chip.key]: Array.isArray(prev[chip.key]) ? [] : '',
-                }))}
+                onClick={() => chip.onClear?.()}
                 type="button"
               >
                 {chip.label}
@@ -1305,7 +1356,10 @@ const Vencimento = () => {
             <button
               className="btn btn-secondary"
               type="button"
-              onClick={() => setFilters({ search: '', broker: '', assessor: '', cliente: '', status: '', estrutura: '', vencimentos: [] })}
+              onClick={() => {
+                setFilters({ search: '', broker: '', assessor: '', status: '', estrutura: '', vencimentos: [] })
+                setClientCodeFilter('')
+              }}
             >
               Limpar tudo
             </button>

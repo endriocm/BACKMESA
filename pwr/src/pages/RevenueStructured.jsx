@@ -7,31 +7,37 @@ import Icon from '../components/Icons'
 import { receitaEntries, receitaResumo } from '../data/revenue'
 import { formatCurrency, formatDate } from '../utils/format'
 import { useToast } from '../hooks/useToast'
+import { useGlobalFilters } from '../contexts/GlobalFilterContext'
+import { enrichRow } from '../services/tags'
 
 const RevenueStructured = () => {
   const { notify } = useToast()
+  const { selectedBroker, tagsIndex } = useGlobalFilters()
   const [filters, setFilters] = useState({ search: '', cliente: '', assessor: '', ativo: '', estrutura: '' })
   const [showWarnings, setShowWarnings] = useState(true)
 
   const rows = useMemo(() => {
     return receitaEntries
       .filter((entry) => entry.origem === 'Estruturadas')
+      .map((entry) => enrichRow(entry, tagsIndex))
       .filter((entry) => {
         const query = filters.search.toLowerCase()
-        if (query && !`${entry.cliente} ${entry.assessor} ${entry.ativo}`.toLowerCase().includes(query)) return false
-        if (filters.cliente && entry.cliente !== filters.cliente) return false
+        if (query && !`${entry.cliente} ${entry.nomeCliente || ''} ${entry.assessor} ${entry.ativo}`.toLowerCase().includes(query)) return false
+        if (selectedBroker && entry.broker !== selectedBroker) return false
+        if (filters.cliente && (entry.nomeCliente || entry.cliente) !== filters.cliente) return false
         if (filters.assessor && entry.assessor !== filters.assessor) return false
         if (filters.ativo && entry.ativo !== filters.ativo) return false
         if (filters.estrutura && entry.estrutura !== filters.estrutura) return false
         return true
       })
-  }, [filters])
+  }, [filters, selectedBroker, tagsIndex])
 
   const columns = useMemo(
     () => [
       { key: 'data', label: 'Data', render: (row) => formatDate(row.data) },
-      { key: 'cliente', label: 'Cliente' },
+      { key: 'cliente', label: 'Cliente', render: (row) => row.nomeCliente || row.cliente },
       { key: 'assessor', label: 'Assessor' },
+      { key: 'broker', label: 'Broker', render: (row) => row.broker || '—' },
       { key: 'ativo', label: 'Ativo' },
       { key: 'estrutura', label: 'Estrutura' },
       {

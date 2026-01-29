@@ -6,28 +6,34 @@ import Badge from '../components/Badge'
 import Icon from '../components/Icons'
 import { receitaEntries, receitaResumo } from '../data/revenue'
 import { formatCurrency, formatDate } from '../utils/format'
+import { useGlobalFilters } from '../contexts/GlobalFilterContext'
+import { enrichRow } from '../services/tags'
 
 const RevenueBovespa = () => {
+  const { selectedBroker, tagsIndex } = useGlobalFilters()
   const [filters, setFilters] = useState({ search: '', ativo: '', cliente: '' })
 
   const rows = useMemo(() => {
     return receitaEntries
       .filter((entry) => entry.origem === 'Bovespa')
+      .map((entry) => enrichRow(entry, tagsIndex))
       .filter((entry) => {
         const query = filters.search.toLowerCase()
-        if (query && !`${entry.cliente} ${entry.ativo}`.toLowerCase().includes(query)) return false
+        if (query && !`${entry.cliente} ${entry.nomeCliente || ''} ${entry.ativo}`.toLowerCase().includes(query)) return false
+        if (selectedBroker && entry.broker !== selectedBroker) return false
         if (filters.ativo && entry.ativo !== filters.ativo) return false
-        if (filters.cliente && entry.cliente !== filters.cliente) return false
+        if (filters.cliente && (entry.nomeCliente || entry.cliente) !== filters.cliente) return false
         return true
       })
-  }, [filters])
+  }, [filters, selectedBroker, tagsIndex])
 
   const columns = useMemo(
     () => [
       { key: 'data', label: 'Data', render: (row) => formatDate(row.data) },
-      { key: 'cliente', label: 'Cliente' },
+      { key: 'cliente', label: 'Cliente', render: (row) => row.nomeCliente || row.cliente },
       { key: 'ativo', label: 'Ativo' },
       { key: 'estrutura', label: 'Estrutura' },
+      { key: 'broker', label: 'Broker', render: (row) => row.broker || '—' },
       {
         key: 'status',
         label: 'Status',

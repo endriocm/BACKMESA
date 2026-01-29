@@ -17,13 +17,13 @@ const getBarrierBadge = (status) => {
 const ReportModal = ({ open, onClose, row, onExport, onCopy, onRefresh }) => {
   if (!row) return null
 
-  const clienteLabel = row.cliente || row.codigoCliente || '—'
+  const clienteLabel = row.nomeCliente || row.cliente || row.codigoCliente || '—'
   const spotLabel = row.spotBase ?? row.spotInicial
   const spotValue = spotLabel == null || Number.isNaN(Number(spotLabel)) ? '—' : formatNumber(spotLabel)
 
   const badge = getBarrierBadge(row.barrierStatus)
   const overrideManual = row.override?.high !== 'auto' || row.override?.low !== 'auto'
-  const cupomManual = row.cupomManual != null && String(row.cupomManual).trim() !== ''
+  const cupomManual = row.manualCouponBRL != null
   const warnings = []
 
   if (row.market?.source !== 'yahoo') {
@@ -115,15 +115,15 @@ const ReportModal = ({ open, onClose, row, onExport, onCopy, onRefresh }) => {
             </div>
             <div>
               <span>Ganho na Call</span>
-              <strong>{formatCurrency(row.result.ganhoCall)}</strong>
+              <strong>{row.result.optionsSuppressed ? 'N/A' : formatCurrency(row.result.ganhoCall)}</strong>
             </div>
             <div>
               <span>Ganho na Put</span>
-              <strong>{formatCurrency(row.result.ganhoPut)}</strong>
+              <strong>{row.result.optionsSuppressed ? 'N/A' : formatCurrency(row.result.ganhoPut)}</strong>
             </div>
             <div>
               <span>Ganhos nas opcoes</span>
-              <strong>{formatCurrency(row.result.ganhosOpcoes)}</strong>
+              <strong>{row.result.optionsSuppressed ? 'N/A' : formatCurrency(row.result.ganhosOpcoes)}</strong>
             </div>
             <div>
               <span>Dividendos</span>

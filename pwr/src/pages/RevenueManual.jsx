@@ -4,6 +4,8 @@ import DataTable from '../components/DataTable'
 import Badge from '../components/Badge'
 import { formatCurrency, formatDate } from '../utils/format'
 import { useToast } from '../hooks/useToast'
+import { useGlobalFilters } from '../contexts/GlobalFilterContext'
+import { enrichRow } from '../services/tags'
 
 const initialEntries = [
   {
@@ -19,6 +21,7 @@ const initialEntries = [
 
 const RevenueManual = () => {
   const { notify } = useToast()
+  const { selectedBroker, tagsIndex } = useGlobalFilters()
   const [entries, setEntries] = useState(initialEntries)
   const [form, setForm] = useState({
     data: '2026-01-26',
@@ -55,14 +58,24 @@ const RevenueManual = () => {
   const columns = useMemo(
     () => [
       { key: 'data', label: 'Data', render: (row) => formatDate(row.data) },
-      { key: 'cliente', label: 'Cliente' },
+      { key: 'cliente', label: 'Cliente', render: (row) => row.nomeCliente || row.cliente },
       { key: 'assessor', label: 'Assessor' },
+      { key: 'broker', label: 'Broker', render: (row) => row.broker || '—' },
       { key: 'ativo', label: 'Ativo' },
       { key: 'valor', label: 'Valor', render: (row) => formatCurrency(row.valor) },
       { key: 'status', label: 'Status', render: () => <Badge tone="green">OK</Badge> },
     ],
     [],
   )
+
+  const rows = useMemo(() => {
+    return entries
+      .map((entry) => enrichRow(entry, tagsIndex))
+      .filter((entry) => {
+        if (selectedBroker && entry.broker !== selectedBroker) return false
+        return true
+      })
+  }, [entries, selectedBroker, tagsIndex])
 
   return (
     <div className="page">
@@ -118,7 +131,7 @@ const RevenueManual = () => {
             <p className="muted">Ultimos lancamentos manuais.</p>
           </div>
         </div>
-        <DataTable rows={entries} columns={columns} emptyMessage="Sem lancamentos manuais." />
+        <DataTable rows={rows} columns={columns} emptyMessage="Sem lancamentos manuais." />
       </section>
     </div>
   )

@@ -30,12 +30,13 @@ const OverrideModal = ({ open, onClose, value, onChange, onApply, onReset, qtyBa
           Cupom manual
           <input
             className="input"
-            type="text"
-            placeholder="Ex: 1.2%"
-            value={value.cupomManual ?? ''}
-            onChange={(event) => onChange({ ...value, cupomManual: event.target.value })}
+            type="number"
+            step="0.01"
+            placeholder="Ex: 1250"
+            value={value.manualCouponBRL ?? ''}
+            onChange={(event) => onChange({ ...value, manualCouponBRL: event.target.value })}
           />
-          <small className="muted">Deixa vazio para usar o cupom automatico.</small>
+          <small className="muted">Valor absoluto em R$. Deixa vazio para usar o cupom automatico.</small>
         </label>
       </div>
       <div className="override-grid">

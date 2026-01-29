@@ -1,8 +1,11 @@
 ﻿import Icon from './Icons'
+import SelectMenu from './SelectMenu'
 import { quickActions } from '../data/navigation'
+import { useGlobalFilters } from '../contexts/GlobalFilterContext'
 
 const Topbar = ({ title, breadcrumbs, onToggleSidebar, currentPath }) => {
   const actions = quickActions[currentPath] || []
+  const { selectedBroker, setSelectedBroker, brokerOptions } = useGlobalFilters()
 
   return (
     <header className="topbar">
@@ -23,6 +26,14 @@ const Topbar = ({ title, breadcrumbs, onToggleSidebar, currentPath }) => {
         </div>
       </div>
       <div className="topbar-actions">
+        <SelectMenu
+          value={selectedBroker}
+          options={brokerOptions}
+          onChange={setSelectedBroker}
+          placeholder="Broker global"
+          className="topbar-filter"
+          menuClassName="topbar-filter-menu"
+        />
         <div className="search-pill">
           <Icon name="search" size={16} />
           <input type="search" placeholder="Buscar no painel" aria-label="Buscar" />

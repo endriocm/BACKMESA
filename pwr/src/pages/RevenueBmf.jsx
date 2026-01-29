@@ -6,26 +6,32 @@ import Badge from '../components/Badge'
 import Icon from '../components/Icons'
 import { receitaEntries, receitaResumo } from '../data/revenue'
 import { formatCurrency, formatDate } from '../utils/format'
+import { useGlobalFilters } from '../contexts/GlobalFilterContext'
+import { enrichRow } from '../services/tags'
 
 const RevenueBmf = () => {
+  const { selectedBroker, tagsIndex } = useGlobalFilters()
   const [filters, setFilters] = useState({ search: '', ativo: '' })
 
   const rows = useMemo(() => {
     return receitaEntries
       .filter((entry) => entry.origem === 'BMF')
+      .map((entry) => enrichRow(entry, tagsIndex))
       .filter((entry) => {
         const query = filters.search.toLowerCase()
-        if (query && !`${entry.cliente} ${entry.ativo}`.toLowerCase().includes(query)) return false
+        if (query && !`${entry.cliente} ${entry.nomeCliente || ''} ${entry.ativo}`.toLowerCase().includes(query)) return false
+        if (selectedBroker && entry.broker !== selectedBroker) return false
         if (filters.ativo && entry.ativo !== filters.ativo) return false
         return true
       })
-  }, [filters])
+  }, [filters, selectedBroker, tagsIndex])
 
   const columns = useMemo(
     () => [
       { key: 'data', label: 'Data', render: (row) => formatDate(row.data) },
-      { key: 'cliente', label: 'Cliente' },
+      { key: 'cliente', label: 'Cliente', render: (row) => row.nomeCliente || row.cliente },
       { key: 'assessor', label: 'Assessor' },
+      { key: 'broker', label: 'Broker', render: (row) => row.broker || '—' },
       { key: 'ativo', label: 'Contrato' },
       {
         key: 'status',
