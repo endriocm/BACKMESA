@@ -255,9 +255,11 @@ export const buildTagIndex = (payload) => {
   const byCliente = new Map()
   const byNome = new Map()
   const brokers = new Set()
+  const assessors = new Set()
 
   rows.forEach((row) => {
     if (row?.broker) brokers.add(row.broker)
+    if (row?.assessor) assessors.add(row.assessor)
     const clienteKey = normalizeTagKey(row?.cliente)
     if (clienteKey && !byCliente.has(clienteKey)) byCliente.set(clienteKey, row)
     const nomeKey = normalizeTagKey(row?.nomeCliente)
@@ -269,6 +271,7 @@ export const buildTagIndex = (payload) => {
     byCliente,
     byNome,
     brokers: Array.from(brokers).sort((a, b) => a.localeCompare(b, 'pt-BR')),
+    assessors: Array.from(assessors).sort((a, b) => a.localeCompare(b, 'pt-BR')),
   }
 }
 

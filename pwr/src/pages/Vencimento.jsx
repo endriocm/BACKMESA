@@ -6,12 +6,13 @@ import Icon from '../components/Icons'
 import ReportModal from '../components/ReportModal'
 import OverrideModal from '../components/OverrideModal'
 import SelectMenu from '../components/SelectMenu'
+import MultiSelect from '../components/MultiSelect'
 import TreeSelect from '../components/TreeSelect'
 import { vencimentos } from '../data/vencimento'
 import { formatCurrency, formatDate, formatNumber } from '../utils/format'
 import { normalizeDateKey } from '../utils/dateKey'
 import { fetchYahooMarketData, normalizeYahooSymbol } from '../services/marketData'
-import { buildDividendKey, fetchDividend, fetchDividendsBatch } from '../services/dividends'
+import { buildDividendKey, clearDividendsCache, fetchDividend, fetchDividendsBatch } from '../services/dividends'
 import { computeBarrierStatus, computeResult, getEffectiveLegs } from '../services/settlement'
 import { clearOverride, loadOverrides, saveOverrides, updateOverride } from '../services/overrides'
 import { parseWorkbook, parseWorkbookBuffer } from '../services/excel'
@@ -136,6 +137,15 @@ const formatDayLabel = (key) => {
   return day
 }
 
+const addDays = (dateKey, delta) => {
+  const key = normalizeDateKey(dateKey)
+  if (!key) return ''
+  const date = new Date(`${key}T00:00:00`)
+  if (Number.isNaN(date.getTime())) return ''
+  date.setDate(date.getDate() + delta)
+  return date.toISOString().slice(0, 10)
+}
+
 const buildFolderLabel = (link, cache) => {
   if (link) {
     if (link.source === 'electron') {
@@ -223,6 +233,14 @@ const buildOptions = (values, placeholder) => {
     .filter(Boolean)
     .sort((a, b) => a.localeCompare(b, 'pt-BR'))
   return [{ value: '', label: placeholder }, ...unique.map((value) => ({ value, label: value }))]
+}
+
+const buildMultiOptions = (values) => {
+  const unique = Array.from(new Set(values.filter((value) => value != null && value !== '')))
+    .map((value) => String(value).trim())
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  return unique.map((value) => ({ value, label: value }))
 }
 
 const getResultTone = (value) => {
@@ -330,15 +348,32 @@ const resolveSpotBase = (operation, market) => {
 
 const Vencimento = () => {
   const { notify } = useToast()
-  const { selectedBroker, clientCodeFilter, setClientCodeFilter, tagsIndex } = useGlobalFilters()
+  const { selectedBroker, selectedAssessor, clientCodeFilter, setClientCodeFilter, tagsIndex } = useGlobalFilters()
   const [userKey] = useState(() => getCurrentUserKey())
-  const [filters, setFilters] = useState({ search: '', broker: '', assessor: '', status: '', estrutura: '', vencimentos: [] })
+  const [filters, setFilters] = useState({
+    search: '',
+    broker: '',
+    status: '',
+    vencimentos: [],
+    estruturas: [],
+    ativos: [],
+    assessores: [],
+  })
+  const [filtersDraft, setFiltersDraft] = useState({
+    estruturas: [],
+    ativos: [],
+    assessores: [],
+  })
   const [operations, setOperations] = useState(vencimentos)
   const [marketMap, setMarketMap] = useState({})
   const [overrides, setOverrides] = useState(() => loadOverrides(userKey))
   const [selectedReport, setSelectedReport] = useState(null)
   const [selectedOverride, setSelectedOverride] = useState(null)
   const [overrideDraft, setOverrideDraft] = useState({ high: 'auto', low: 'auto', manualCouponBRL: '', qtyBonus: 0, bonusDate: '', bonusNote: '' })
+  const [reportDate, setReportDate] = useState('')
+  const [dividendAdjustments, setDividendAdjustments] = useState(new Map())
+  const [dividendStatus, setDividendStatus] = useState({ loading: false, error: '' })
+  const [dividendsRefreshToken, setDividendsRefreshToken] = useState(0)
   const [linkMeta, setLinkMeta] = useState(null)
   const [cacheMeta, setCacheMeta] = useState(null)
   const [restoreStatus, setRestoreStatus] = useState({ state: 'idle', message: '' })
@@ -378,6 +413,37 @@ const Vencimento = () => {
     if (!userKey) return
     saveOverrides(userKey, overrides)
   }, [overrides, userKey])
+
+  useEffect(() => {
+    if (!userKey) return
+    try {
+      const stored = localStorage.getItem(`pwr.vencimento.reportDate.${userKey}`)
+      if (stored) setReportDate(stored)
+    } catch {
+      // noop
+    }
+  }, [userKey])
+
+  useEffect(() => {
+    if (!userKey) return
+    try {
+      if (reportDate) {
+        localStorage.setItem(`pwr.vencimento.reportDate.${userKey}`, reportDate)
+      } else {
+        localStorage.removeItem(`pwr.vencimento.reportDate.${userKey}`)
+      }
+    } catch {
+      // noop
+    }
+  }, [reportDate, userKey])
+
+  useEffect(() => {
+    setFiltersDraft({
+      estruturas: filters.estruturas,
+      ativos: filters.ativos,
+      assessores: filters.assessores,
+    })
+  }, [filters.estruturas, filters.ativos, filters.assessores])
 
   const broadcastUpdate = useCallback((type, payload = {}) => {
     if (!userKey) return
@@ -669,13 +735,84 @@ const Vencimento = () => {
     }
   }, [operations])
 
+  useEffect(() => {
+    let active = true
+    const run = async () => {
+      if (!reportDate) {
+        setDividendAdjustments(new Map())
+        setDividendStatus({ loading: false, error: '' })
+        return
+      }
+      clearDividendsCache()
+      const from = addDays(reportDate, 1)
+      if (!from) {
+        setDividendAdjustments(new Map())
+        setDividendStatus({ loading: false, error: '' })
+        return
+      }
+      const requests = operations
+        .map((operation) => {
+          const to = normalizeDateKey(operation?.vencimento || operation?.dataReferencia)
+          const ticker = operation?.ativo
+          if (!ticker || !to || from >= to) return null
+          return {
+            id: operation.id,
+            key: buildDividendKey(ticker, from, to),
+            ticker,
+            from,
+            to,
+          }
+        })
+        .filter(Boolean)
+
+      if (!requests.length) {
+        setDividendAdjustments(new Map())
+        setDividendStatus({ loading: false, error: '' })
+        return
+      }
+
+      setDividendStatus({ loading: true, error: '' })
+      try {
+        const results = await fetchDividendsBatch(requests.map(({ ticker, from, to }) => ({ ticker, from, to })))
+        const resultMap = new Map(results.filter(Boolean).map((item) => [item.key, item]))
+        const next = new Map()
+        requests.forEach((req) => {
+          const item = resultMap.get(req.key)
+          next.set(req.id, {
+            total: Number(item?.total || 0),
+            source: item?.source || null,
+          })
+        })
+        if (active) {
+          setDividendAdjustments(next)
+          setDividendStatus({ loading: false, error: '' })
+        }
+      } catch (error) {
+        if (active) {
+          setDividendAdjustments(new Map())
+          setDividendStatus({ loading: false, error: 'Falha ao recalcular proventos.' })
+        }
+      }
+    }
+    run()
+    return () => {
+      active = false
+    }
+  }, [dividendsRefreshToken, operations, reportDate])
+
   const enrichedOperations = useMemo(
     () => operations.map((operation) => enrichRow(operation, tagsIndex)),
     [operations, tagsIndex],
   )
   const brokerOptions = useMemo(() => buildOptions(enrichedOperations.map((item) => item.broker), 'Broker'), [enrichedOperations])
-  const assessorOptions = useMemo(() => buildOptions(enrichedOperations.map((item) => item.assessor), 'Assessor'), [enrichedOperations])
-  const estruturaOptions = useMemo(() => buildOptions(enrichedOperations.map((item) => item.estrutura), 'Estrutura'), [enrichedOperations])
+  const operationsByPeriod = useMemo(() => {
+    if (!filters.vencimentos.length) return enrichedOperations
+    const set = new Set(filters.vencimentos)
+    return enrichedOperations.filter((item) => set.has(normalizeDateKey(item?.vencimento)))
+  }, [enrichedOperations, filters.vencimentos])
+  const estruturaOptions = useMemo(() => buildMultiOptions(operationsByPeriod.map((item) => item.estrutura)), [operationsByPeriod])
+  const ativoOptions = useMemo(() => buildMultiOptions(enrichedOperations.map((item) => item.ativo)), [enrichedOperations])
+  const assessorOptions = useMemo(() => buildMultiOptions(enrichedOperations.map((item) => item.assessor)), [enrichedOperations])
   const { tree: vencimentoTree, allValues: vencimentoValues } = useMemo(
     () => buildVencimentoTree(enrichedOperations),
     [enrichedOperations],
@@ -705,11 +842,31 @@ const Vencimento = () => {
     }
   }, [notify])
 
+  const applyDividendAdjustments = useCallback((legs, adjustment) => {
+    if (!Array.isArray(legs) || !legs.length) return legs
+    const total = Number(adjustment || 0)
+    if (!reportDate || !Number.isFinite(total) || total <= 0) return legs
+    return legs.map((leg) => {
+      const tipo = String(leg?.tipo || '').toUpperCase()
+      if (tipo !== 'CALL' && tipo !== 'PUT') return leg
+      const strike = Number(leg?.strike ?? leg?.precoStrike)
+      if (!Number.isFinite(strike)) return leg
+      const adjusted = Math.max(0, strike - total)
+      return {
+        ...leg,
+        strikeOriginal: strike,
+        strikeAjustado: adjusted,
+        dividendAdjustment: total,
+      }
+    })
+  }, [reportDate])
+
   const rows = useMemo(() => {
     const vencimentoSet = new Set(filters.vencimentos)
     return enrichedOperations
       .map((operation) => {
         const market = marketMap[operation.id]
+        const dividendInfo = dividendAdjustments.get(operation.id)
         const override = overrides[operation.id] || { high: 'auto', low: 'auto', manualCouponBRL: null, manualCouponPct: null, qtyBonus: 0, bonusDate: '', bonusNote: '' }
         const qtyBase = parseQuantity(operation.qtyBase ?? operation.quantidade ?? 0)
         const qtyAtualRaw = operation.qtyAtual ?? operation.quantidadeAtual
@@ -728,9 +885,10 @@ const Vencimento = () => {
             ? qtyAtualSource
             : Math.max(0, qtyBase + qtyBonus)
         const spotBase = resolveSpotBase(operation, market)
+        const adjustedLegs = applyDividendAdjustments(operation.pernas, dividendInfo?.total)
         const operationWithSpot = spotBase != null
-          ? { ...operation, spotInicial: spotBase, qtyBase, qtyBonus, qtyAtual }
-          : { ...operation, qtyBase, qtyBonus, qtyAtual }
+          ? { ...operation, spotInicial: spotBase, qtyBase, qtyBonus, qtyAtual, pernas: adjustedLegs }
+          : { ...operation, qtyBase, qtyBonus, qtyAtual, pernas: adjustedLegs }
         const barrierStatus = computeBarrierStatus(operationWithSpot, market, override)
         const manualCouponBRL = override?.manualCouponBRL != null && Number.isFinite(Number(override.manualCouponBRL))
           ? Number(override.manualCouponBRL)
@@ -740,7 +898,7 @@ const Vencimento = () => {
           ? formatCurrency(manualCouponBRL)
           : (legacyCouponLabel || operation.cupom || 'N/A')
         const result = computeResult(operationWithSpot, market, barrierStatus, override)
-        const effectiveLegs = getEffectiveLegs(operationWithSpot)
+        const effectiveLegs = result.effectiveLegs || getEffectiveLegs(operationWithSpot)
         return {
           ...operation,
           qtyBase,
@@ -755,6 +913,8 @@ const Vencimento = () => {
           barrierStatus,
           result,
           effectiveLegs,
+          dividendAdjustment: dividendInfo?.total || 0,
+          dividendSource: dividendInfo?.source || null,
           status: getStatus(operation.vencimento),
         }
       })
@@ -763,18 +923,20 @@ const Vencimento = () => {
         const searchBase = `${entry.codigoCliente || ''} ${entry.cliente || ''} ${entry.nomeCliente || ''} ${entry.ativo || ''} ${entry.estrutura || ''} ${entry.assessor || ''} ${entry.broker || ''}`.toLowerCase()
         if (query && !searchBase.includes(query)) return false
         if (selectedBroker && entry.broker !== selectedBroker) return false
+        if (selectedAssessor && entry.assessor !== selectedAssessor) return false
         if (filters.broker && entry.broker !== filters.broker) return false
-        if (filters.assessor && entry.assessor !== filters.assessor) return false
+        if (filters.assessores?.length && !filters.assessores.includes(entry.assessor)) return false
         if (clientCodeFilter) {
           const clienteMatch = String(entry.codigoCliente || entry.cliente || '').trim()
           if (clienteMatch !== String(clientCodeFilter).trim()) return false
         }
-        if (filters.estrutura && entry.estrutura !== filters.estrutura) return false
+        if (filters.estruturas?.length && !filters.estruturas.includes(entry.estrutura)) return false
+        if (filters.ativos?.length && !filters.ativos.includes(entry.ativo)) return false
         if (vencimentoSet.size && !vencimentoSet.has(normalizeDateKey(entry.vencimento))) return false
         if (filters.status && entry.status.key !== filters.status) return false
         return true
       })
-  }, [clientCodeFilter, enrichedOperations, filters, marketMap, overrides, selectedBroker])
+  }, [applyDividendAdjustments, clientCodeFilter, dividendAdjustments, enrichedOperations, filters, marketMap, overrides, reportDate, selectedBroker, selectedAssessor])
 
   const pageCount = useMemo(() => Math.max(1, Math.ceil(rows.length / PAGE_SIZE)), [rows.length])
   const paginationItems = useMemo(() => buildPagination(currentPage, pageCount), [currentPage, pageCount])
@@ -783,7 +945,7 @@ const Vencimento = () => {
   }, [pageCount])
   useEffect(() => {
     setCurrentPage(1)
-  }, [filters, operations, selectedBroker, clientCodeFilter])
+  }, [filters, operations, selectedBroker, selectedAssessor, clientCodeFilter])
 
   const pageStart = (currentPage - 1) * PAGE_SIZE
   const visibleRows = useMemo(() => rows.slice(pageStart, pageStart + PAGE_SIZE), [rows, pageStart])
@@ -1052,12 +1214,36 @@ const Vencimento = () => {
 
   const chips = [
     { key: 'broker', label: filters.broker, onClear: () => setFilters((prev) => ({ ...prev, broker: '' })) },
-    { key: 'assessor', label: filters.assessor, onClear: () => setFilters((prev) => ({ ...prev, assessor: '' })) },
+    { key: 'assessores', label: filters.assessores.length ? `Assessores (${filters.assessores.length})` : '', onClear: () => setFilters((prev) => ({ ...prev, assessores: [] })) },
     { key: 'clientCode', label: clientCodeFilter, onClear: () => setClientCodeFilter('') },
-    { key: 'estrutura', label: filters.estrutura, onClear: () => setFilters((prev) => ({ ...prev, estrutura: '' })) },
+    { key: 'estruturas', label: filters.estruturas.length ? `Estruturas (${filters.estruturas.length})` : '', onClear: () => setFilters((prev) => ({ ...prev, estruturas: [] })) },
+    { key: 'ativos', label: filters.ativos.length ? `Ativos (${filters.ativos.length})` : '', onClear: () => setFilters((prev) => ({ ...prev, ativos: [] })) },
     { key: 'vencimentos', label: vencimentoChipLabel, onClear: () => setFilters((prev) => ({ ...prev, vencimentos: [] })) },
     { key: 'status', label: filters.status, onClear: () => setFilters((prev) => ({ ...prev, status: '' })) },
   ].filter((chip) => chip.label)
+
+  const handleApplyFilters = useCallback(() => {
+    setFilters((prev) => ({
+      ...prev,
+      estruturas: filtersDraft.estruturas,
+      ativos: filtersDraft.ativos,
+      assessores: filtersDraft.assessores,
+    }))
+  }, [filtersDraft])
+
+  const handleClearFilters = useCallback(() => {
+    setFilters({
+      search: '',
+      broker: '',
+      status: '',
+      vencimentos: [],
+      estruturas: [],
+      ativos: [],
+      assessores: [],
+    })
+    setFiltersDraft({ estruturas: [], ativos: [], assessores: [] })
+    setClientCodeFilter('')
+  }, [setClientCodeFilter])
 
   const handlePickFolder = useCallback(async () => {
     try {
@@ -1161,6 +1347,11 @@ const Vencimento = () => {
     broadcastUpdate('vencimento-updated', { kind: 'clear' })
     notify('Vinculo removido.', 'success')
   }, [broadcastUpdate, notify, userKey])
+
+  const handleRecalculateDividends = useCallback(() => {
+    clearDividendsCache()
+    setDividendsRefreshToken((prev) => prev + 1)
+  }, [])
 
   const handleExportPdf = (row) => {
     const barrierBadge = getBarrierBadge(row.barrierStatus)
@@ -1283,6 +1474,33 @@ const Vencimento = () => {
       <section className="panel">
         <div className="panel-head">
           <div>
+            <h3>Data do relatorio</h3>
+            <p className="muted">Usada como corte para ajustar strikes por proventos.</p>
+          </div>
+          <div className="panel-actions">
+            <input
+              className="input"
+              type="date"
+              value={reportDate}
+              onChange={(event) => setReportDate(event.target.value)}
+            />
+            <button
+              className="btn btn-secondary"
+              type="button"
+              onClick={handleRecalculateDividends}
+              disabled={!reportDate || dividendStatus.loading}
+            >
+              <Icon name="sync" size={16} />
+              {dividendStatus.loading ? 'Recalculando...' : 'Recalcular proventos'}
+            </button>
+          </div>
+        </div>
+        {dividendStatus.error ? <div className="muted">{dividendStatus.error}</div> : null}
+      </section>
+
+      <section className="panel">
+        <div className="panel-head">
+          <div>
             <h3>Filtros rapidos</h3>
             <p className="muted">Use chips para limpar e ajustar rapidamente.</p>
           </div>
@@ -1305,17 +1523,23 @@ const Vencimento = () => {
             onChange={(value) => setFilters((prev) => ({ ...prev, broker: value }))}
             placeholder="Broker"
           />
-          <SelectMenu
-            value={filters.assessor}
+          <MultiSelect
+            value={filtersDraft.assessores}
             options={assessorOptions}
-            onChange={(value) => setFilters((prev) => ({ ...prev, assessor: value }))}
+            onChange={(value) => setFiltersDraft((prev) => ({ ...prev, assessores: value }))}
             placeholder="Assessor"
           />
-          <SelectMenu
-            value={filters.estrutura}
+          <MultiSelect
+            value={filtersDraft.estruturas}
             options={estruturaOptions}
-            onChange={(value) => setFilters((prev) => ({ ...prev, estrutura: value }))}
+            onChange={(value) => setFiltersDraft((prev) => ({ ...prev, estruturas: value }))}
             placeholder="Estrutura"
+          />
+          <MultiSelect
+            value={filtersDraft.ativos}
+            options={ativoOptions}
+            onChange={(value) => setFiltersDraft((prev) => ({ ...prev, ativos: value }))}
+            placeholder="Ativo"
           />
           <TreeSelect
             value={filters.vencimentos}
@@ -1342,6 +1566,14 @@ const Vencimento = () => {
             placeholder="Status"
           />
         </div>
+        <div className="panel-actions">
+          <button className="btn btn-secondary" type="button" onClick={handleClearFilters}>
+            Limpar filtros
+          </button>
+          <button className="btn btn-primary" type="button" onClick={handleApplyFilters}>
+            Aplicar filtros
+          </button>
+        </div>
         {chips.length ? (
           <div className="chip-row">
             {chips.map((chip) => (
@@ -1358,10 +1590,7 @@ const Vencimento = () => {
             <button
               className="btn btn-secondary"
               type="button"
-              onClick={() => {
-                setFilters({ search: '', broker: '', assessor: '', status: '', estrutura: '', vencimentos: [] })
-                setClientCodeFilter('')
-              }}
+              onClick={handleClearFilters}
             >
               Limpar tudo
             </button>

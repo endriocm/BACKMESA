@@ -166,13 +166,21 @@ const ReportModal = ({ open, onClose, row, onExport, onCopy, onRefresh }) => {
                 const tipo = String(leg?.tipo || 'N/A').toUpperCase()
                 const isShort = String(leg?.side || '').toLowerCase() === 'short' || Number(leg?.quantidade || 0) < 0
                 const sideLabel = isShort ? 'Vendida' : 'Comprada'
-                const strike = leg?.strike ?? leg?.precoStrike ?? '—'
+                const strikeOriginal = leg?.strikeOriginal ?? leg?.strike ?? leg?.precoStrike ?? null
+                const strikeAdjusted = leg?.strikeAjustado ?? leg?.strikeAdjusted ?? strikeOriginal
+                const strikeAdjustedLabel = Number.isFinite(Number(strikeAdjusted)) ? formatNumber(strikeAdjusted) : '—'
+                const strikeOriginalLabel = Number.isFinite(Number(strikeOriginal)) ? formatNumber(strikeOriginal) : '—'
+                const showOriginal = Number.isFinite(Number(strikeAdjusted))
+                  && Number.isFinite(Number(strikeOriginal))
+                  && Number(strikeAdjusted) !== Number(strikeOriginal)
                 const rawQty = leg?.quantidadeEfetiva ?? leg?.quantidade ?? 0
                 const qtyLabel = formatNumber(Math.abs(Number(rawQty) || 0))
                 return (
-                  <div key={`${leg?.id || index}-${strike}`}>
-                    <span>{tipo} {sideLabel} | Strike {strike}</span>
-                    <strong>Qtd {qtyLabel}</strong>
+                  <div key={`${leg?.id || index}-${strikeOriginal}`}>
+                    <span>{tipo} {sideLabel}</span>
+                    <strong>Strike {strikeAdjustedLabel}</strong>
+                    <span>Qtd {qtyLabel}</span>
+                    {showOriginal ? <small className="muted">Orig {strikeOriginalLabel}</small> : null}
                   </div>
                 )
               })}

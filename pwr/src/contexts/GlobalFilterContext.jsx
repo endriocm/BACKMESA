@@ -37,6 +37,7 @@ const GlobalFilterContext = createContext(null)
 export const GlobalFilterProvider = ({ children }) => {
   const [userKey] = useState(() => getCurrentUserKey())
   const [selectedBroker, setSelectedBroker] = useState('')
+  const [selectedAssessor, setSelectedAssessor] = useState('')
   const [clientCodeFilter, setClientCodeFilter] = useState('')
   const [tagsPayload, setTagsPayload] = useState(null)
   const channelRef = useRef(null)
@@ -48,6 +49,10 @@ export const GlobalFilterProvider = ({ children }) => {
   const brokerOptions = useMemo(() => {
     const base = tagsIndex?.brokers || []
     return [{ value: '', label: 'Todos os brokers' }, ...base.map((item) => ({ value: item, label: item }))]
+  }, [tagsIndex])
+  const assessorOptions = useMemo(() => {
+    const base = tagsIndex?.assessors || []
+    return [{ value: '', label: 'Todos os assessores' }, ...base.map((item) => ({ value: item, label: item }))]
   }, [tagsIndex])
 
   const refreshTags = useCallback(async () => {
@@ -64,6 +69,7 @@ export const GlobalFilterProvider = ({ children }) => {
     if (!payload) return
     applyingRemoteRef.current = true
     setSelectedBroker(normalizeValue(payload.broker))
+    setSelectedAssessor(normalizeValue(payload.assessor))
     setClientCodeFilter(normalizeValue(payload.clientCode))
     setTimeout(() => {
       applyingRemoteRef.current = false
@@ -75,6 +81,7 @@ export const GlobalFilterProvider = ({ children }) => {
     const stored = parseStored(localStorage.getItem(buildKey(userKey)))
     if (stored) {
       setSelectedBroker(normalizeValue(stored.broker))
+      setSelectedAssessor(normalizeValue(stored.assessor))
       setClientCodeFilter(normalizeValue(stored.clientCode))
     }
     loadedRef.current = true
@@ -85,6 +92,7 @@ export const GlobalFilterProvider = ({ children }) => {
     const payload = {
       version: STORAGE_VERSION,
       broker: normalizeValue(selectedBroker),
+      assessor: normalizeValue(selectedAssessor),
       clientCode: normalizeValue(clientCodeFilter),
       updatedAt: Date.now(),
     }
@@ -108,7 +116,7 @@ export const GlobalFilterProvider = ({ children }) => {
       }
     }
     debugLog('filters.change', { broker: payload.broker, clientCode: payload.clientCode })
-  }, [selectedBroker, clientCodeFilter, userKey])
+  }, [selectedAssessor, selectedBroker, clientCodeFilter, userKey])
 
   useEffect(() => {
     if (!userKey) return
@@ -163,13 +171,16 @@ export const GlobalFilterProvider = ({ children }) => {
       userKey,
       selectedBroker,
       setSelectedBroker,
+      selectedAssessor,
+      setSelectedAssessor,
       clientCodeFilter,
       setClientCodeFilter,
       brokerOptions,
+      assessorOptions,
       tagsIndex,
       refreshTags,
     }),
-    [userKey, selectedBroker, clientCodeFilter, brokerOptions, tagsIndex, refreshTags],
+    [userKey, selectedBroker, selectedAssessor, clientCodeFilter, brokerOptions, assessorOptions, tagsIndex, refreshTags],
   )
 
   return (

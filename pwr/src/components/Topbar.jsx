@@ -5,7 +5,7 @@ import { useGlobalFilters } from '../contexts/GlobalFilterContext'
 
 const Topbar = ({ title, breadcrumbs, onToggleSidebar, currentPath }) => {
   const actions = quickActions[currentPath] || []
-  const { selectedBroker, setSelectedBroker, brokerOptions } = useGlobalFilters()
+  const { selectedBroker, setSelectedBroker, brokerOptions, selectedAssessor, setSelectedAssessor, assessorOptions } = useGlobalFilters()
 
   return (
     <header className="topbar">
@@ -31,6 +31,14 @@ const Topbar = ({ title, breadcrumbs, onToggleSidebar, currentPath }) => {
           options={brokerOptions}
           onChange={setSelectedBroker}
           placeholder="Broker global"
+          className="topbar-filter"
+          menuClassName="topbar-filter-menu"
+        />
+        <SelectMenu
+          value={selectedAssessor}
+          options={assessorOptions}
+          onChange={setSelectedAssessor}
+          placeholder="Assessor global"
           className="topbar-filter"
           menuClassName="topbar-filter-menu"
         />

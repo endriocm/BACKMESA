@@ -146,6 +146,25 @@ export const getEffectiveLegs = (operation) => {
   })
 }
 
+const resolveStrike = (leg) => {
+  const adjusted = leg?.strikeAjustado ?? leg?.strikeAdjusted
+  if (adjusted != null && Number.isFinite(Number(adjusted))) return Number(adjusted)
+  const raw = leg?.strike
+  return Number.isFinite(Number(raw)) ? Number(raw) : 0
+}
+
+const isKoHit = (legs, barrierStatus, spotInicial) => {
+  if (!barrierStatus) return false
+  const koLegs = (legs || []).filter((leg) => resolveBarrierMode(leg?.barreiraTipo) === 'out')
+  if (!koLegs.length) return false
+  return koLegs.some((leg) => {
+    const direction = resolveBarrierDirection(leg?.barreiraTipo, leg?.barreiraValor, spotInicial)
+    if (direction === 'high') return barrierStatus.high === true
+    if (direction === 'low') return barrierStatus.low === true
+    return barrierStatus.high === true || barrierStatus.low === true
+  })
+}
+
 const resolveDebitQuantity = (leg, fallback) => {
   const baseQty = Math.abs(Number(fallback || 0))
   if (baseQty) return baseQty
@@ -170,7 +189,14 @@ export const computeResult = (operation, market, barrierStatus, override = {}) =
   const custoUnitario = Number(operation.custoUnitario || 0)
   const custoTotal = qtyBase * custoUnitario
   const pagouManual = operation.pagou != null && operation.pagou !== '' ? Number(operation.pagou) : null
-  const effectiveLegs = getEffectiveLegs(operation)
+  let effectiveLegs = getEffectiveLegs(operation)
+  if (isBooster(operation?.estrutura) && isKoHit(effectiveLegs, barrierStatus, operation?.spotInicial)) {
+    effectiveLegs = effectiveLegs.map((leg) => {
+      const tipo = String(leg?.tipo || '').toUpperCase()
+      if (tipo !== 'CALL' || isShortLeg(leg)) return leg
+      return { ...leg, quantidadeEfetiva: 0, disabledByKo: true }
+    })
+  }
   const optionQtyList = effectiveLegs
     .filter((leg) => ['CALL', 'PUT'].includes(String(leg?.tipo || '').toUpperCase()))
     .map((leg) => Math.abs(resolveLegQuantity(leg, 0)))
@@ -191,7 +217,7 @@ export const computeResult = (operation, market, barrierStatus, override = {}) =
 
   const payoff = effectiveLegs.reduce((sum, leg) => {
     if (!isLegActive(leg, barrierStatus)) return sum
-    const strike = Number(leg.strike || 0)
+    const strike = resolveStrike(leg)
     const rawQty = resolveLegQuantity(leg, qtyBase)
     if (!rawQty) return sum
     const qty = Math.abs(rawQty)
@@ -242,7 +268,7 @@ export const computeResult = (operation, market, barrierStatus, override = {}) =
     const tipo = String(leg?.tipo || '').toUpperCase()
     if (tipo !== 'CALL' && tipo !== 'PUT') return sum
     if (!isShortLeg(leg)) return sum
-    const strike = Number(leg?.strike || 0)
+    const strike = resolveStrike(leg)
     if (!Number.isFinite(strike) || strike <= 0) return sum
     const liquidou = tipo === 'CALL' ? spotFinal >= strike : spotFinal <= strike
     if (!liquidou) return sum
@@ -265,6 +291,7 @@ export const computeResult = (operation, market, barrierStatus, override = {}) =
   const percent = pagou ? ganho / pagou : 0
 
   return {
+    effectiveLegs,
     spotFinal,
     vendaAtivo: valorSaida,
     vendaAtivoBruta,

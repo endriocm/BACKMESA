@@ -94,3 +94,8 @@ export const fetchDividend = async ({ ticker, from, to }) => {
   inflight.set(key, promise)
   return promise
 }
+
+export const clearDividendsCache = () => {
+  cache.clear()
+  inflight.clear()
+}
