@@ -1,10 +1,11 @@
 import { debugLog } from './debug'
 
-const STORAGE_PREFIX = 'pwr.tags.'
 const TAGS_VERSION = 1
 const XLSX_URL = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs'
-
-const buildKey = (userKey) => `${STORAGE_PREFIX}${userKey}`
+const TAGS_DB_NAME = 'pwr-tags'
+const TAGS_STORE = 'tags'
+const TAGS_DB_VERSION = 1
+const memoryCache = new Map()
 
 const normalizeKey = (value) => String(value || '')
   .toLowerCase()
@@ -17,6 +18,12 @@ const normalizeValue = (value) => {
   if (typeof value === 'string') return value.trim()
   if (typeof value === 'number') return String(value)
   return String(value).trim()
+}
+
+const normalizeLabel = (value, fallback) => {
+  const raw = normalizeValue(value)
+  if (!raw || raw === '0') return fallback
+  return raw
 }
 
 const toArrayBuffer = async (input) => {
@@ -65,12 +72,90 @@ const looksLikeCode = (value) => {
   return /^\d+$/.test(raw)
 }
 
+const openTagsDb = () => new Promise((resolve, reject) => {
+  if (typeof indexedDB === 'undefined') {
+    reject(new Error('indexeddb-unavailable'))
+    return
+  }
+  const request = indexedDB.open(TAGS_DB_NAME, TAGS_DB_VERSION)
+  request.onupgradeneeded = () => {
+    const db = request.result
+    if (!db.objectStoreNames.contains(TAGS_STORE)) {
+      db.createObjectStore(TAGS_STORE)
+    }
+  }
+  request.onsuccess = () => resolve(request.result)
+  request.onerror = () => reject(request.error)
+})
+
+const readPayload = async (userKey) => {
+  try {
+    const db = await openTagsDb()
+    return await new Promise((resolve) => {
+      const tx = db.transaction(TAGS_STORE, 'readonly')
+      const store = tx.objectStore(TAGS_STORE)
+      const request = store.get(userKey)
+      request.onsuccess = () => resolve(request.result || null)
+      request.onerror = () => resolve(null)
+      tx.oncomplete = () => db.close()
+      tx.onabort = () => {
+        db.close()
+        resolve(null)
+      }
+    })
+  } catch {
+    return null
+  }
+}
+
+const writePayload = async (userKey, payload) => {
+  try {
+    const db = await openTagsDb()
+    return await new Promise((resolve) => {
+      const tx = db.transaction(TAGS_STORE, 'readwrite')
+      const store = tx.objectStore(TAGS_STORE)
+      store.put(payload, userKey)
+      tx.oncomplete = () => {
+        db.close()
+        resolve(true)
+      }
+      tx.onabort = () => {
+        db.close()
+        resolve(false)
+      }
+    })
+  } catch {
+    return false
+  }
+}
+
+const deletePayload = async (userKey) => {
+  try {
+    const db = await openTagsDb()
+    return await new Promise((resolve) => {
+      const tx = db.transaction(TAGS_STORE, 'readwrite')
+      const store = tx.objectStore(TAGS_STORE)
+      store.delete(userKey)
+      tx.oncomplete = () => {
+        db.close()
+        resolve(true)
+      }
+      tx.onabort = () => {
+        db.close()
+        resolve(false)
+      }
+    })
+  } catch {
+    return false
+  }
+}
+
 export const parseTagsXlsx = async (input) => {
   const buffer = await toArrayBuffer(input)
   if (!buffer) throw new Error('buffer-invalid')
   const XLSX = await import(/* @vite-ignore */ XLSX_URL)
   const workbook = XLSX.read(buffer, { type: 'array', cellDates: true })
-  const sheetName = workbook.SheetNames?.[0]
+  const sheetName = workbook.SheetNames?.find((name) => normalizeKey(name) === 'planilha1') || workbook.SheetNames?.[0]
   if (!sheetName) throw new Error('sheet-missing')
   const sheet = workbook.Sheets[sheetName]
   const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' })
@@ -89,8 +174,8 @@ export const parseTagsXlsx = async (input) => {
     const fallbackRow = rawRows[rowOffset + index] || []
 
     const cliente = normalizeValue(getValue(normalizedRow, CLIENTE_KEYS, fallbackRow[0]))
-    const assessor = normalizeValue(getValue(normalizedRow, ASSESSOR_KEYS, fallbackRow[1]))
-    const broker = normalizeValue(getValue(normalizedRow, BROKER_KEYS, fallbackRow[2]))
+    const assessor = normalizeLabel(getValue(normalizedRow, ASSESSOR_KEYS, fallbackRow[1]), 'Sem assessor')
+    const broker = normalizeLabel(getValue(normalizedRow, BROKER_KEYS, fallbackRow[2]), 'Sem broker')
     const nomeCliente = normalizeValue(getValue(normalizedRow, NOME_CLIENTE_KEYS, fallbackRow[3]))
 
     if (isHeaderRow(cliente, assessor, broker, nomeCliente)) return
@@ -109,12 +194,13 @@ export const parseTagsXlsx = async (input) => {
       return
     }
     seen.add(key)
-    if (!assessor || !broker) stats.avisos += 1
+    if (assessor === 'Sem assessor' || broker === 'Sem broker') stats.avisos += 1
 
     parsedRows.push({
+      id: key,
       cliente: cliente || '',
-      assessor: assessor || '',
-      broker: broker || '',
+      assessor,
+      broker,
       nomeCliente: nomeCliente || '',
     })
   })
@@ -133,7 +219,7 @@ export const parseTagsXlsx = async (input) => {
   }
 }
 
-export const saveTags = (userKey, payload) => {
+export const saveTags = async (userKey, payload) => {
   if (!userKey || !payload) return null
   const stored = {
     version: payload.version || TAGS_VERSION,
@@ -143,38 +229,25 @@ export const saveTags = (userKey, payload) => {
     source: payload.source || 'unknown',
     sheetName: payload.sheetName || null,
   }
-  try {
-    localStorage.setItem(buildKey(userKey), JSON.stringify(stored))
-  } catch {
-    return null
-  }
+  const ok = await writePayload(userKey, stored)
+  if (!ok) return null
+  memoryCache.set(userKey, stored)
   debugLog('tags.import.saved', { total: stored.rows.length })
   return stored
 }
 
-export const loadTags = (userKey) => {
+export const loadTags = async (userKey) => {
   if (!userKey) return null
-  let raw = null
-  try {
-    raw = localStorage.getItem(buildKey(userKey))
-  } catch {
-    raw = null
-  }
-  if (!raw) return null
-  try {
-    return JSON.parse(raw)
-  } catch {
-    return null
-  }
+  if (memoryCache.has(userKey)) return memoryCache.get(userKey)
+  const payload = await readPayload(userKey)
+  if (payload) memoryCache.set(userKey, payload)
+  return payload
 }
 
-export const clearTags = (userKey) => {
+export const clearTags = async (userKey) => {
   if (!userKey) return
-  try {
-    localStorage.removeItem(buildKey(userKey))
-  } catch {
-    // noop
-  }
+  memoryCache.delete(userKey)
+  await deletePayload(userKey)
 }
 
 export const buildTagIndex = (payload) => {

@@ -38,7 +38,7 @@ export const GlobalFilterProvider = ({ children }) => {
   const [userKey] = useState(() => getCurrentUserKey())
   const [selectedBroker, setSelectedBroker] = useState('')
   const [clientCodeFilter, setClientCodeFilter] = useState('')
-  const [tagsPayload, setTagsPayload] = useState(() => loadTags(userKey))
+  const [tagsPayload, setTagsPayload] = useState(null)
   const channelRef = useRef(null)
   const senderRef = useRef(Math.random().toString(36).slice(2))
   const loadedRef = useRef(false)
@@ -50,9 +50,10 @@ export const GlobalFilterProvider = ({ children }) => {
     return [{ value: '', label: 'Todos os brokers' }, ...base.map((item) => ({ value: item, label: item }))]
   }, [tagsIndex])
 
-  const refreshTags = useCallback(() => {
+  const refreshTags = useCallback(async () => {
     if (!userKey) return
-    setTagsPayload(loadTags(userKey))
+    const loaded = await loadTags(userKey)
+    setTagsPayload(loaded)
   }, [userKey])
 
   useEffect(() => {
@@ -136,9 +137,6 @@ export const GlobalFilterProvider = ({ children }) => {
         if (!payload) return
         applyRemote(payload)
         return
-      }
-      if (event.key === `pwr.tags.${userKey}`) {
-        refreshTags()
       }
     }
 
