@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import PageHeader from '../components/PageHeader'
 import SyncPanel from '../components/SyncPanel'
 import DataTable from '../components/DataTable'
@@ -17,7 +17,22 @@ const RevenueStructured = () => {
   const [periodKey, setPeriodKey] = useState('')
   const [syncing, setSyncing] = useState(false)
   const [syncResult, setSyncResult] = useState(null)
+  const [lastSyncAt, setLastSyncAt] = useState(() => {
+    try {
+      return localStorage.getItem('pwr.receita.estruturadas.lastSyncAt') || ''
+    } catch {
+      return ''
+    }
+  })
   const [showWarnings, setShowWarnings] = useState(true)
+  const toastLockRef = useRef(null)
+  const debugEnabled = useMemo(() => {
+    try {
+      return localStorage.getItem('pwr.debug.receita') === '1'
+    } catch {
+      return false
+    }
+  }, [])
 
   const monthOptions = useMemo(() => {
     const keys = Array.from(new Set(entries.map((entry) => getMonthKey(entry.dataEntrada))))
@@ -68,18 +83,29 @@ const RevenueStructured = () => {
   )
 
   const handleSync = useCallback(async (file) => {
+    if (syncing) return
+    const attemptId = `${Date.now()}-${Math.random()}`
+    toastLockRef.current = attemptId
+    const notifyOnce = (message, tone) => {
+      if (toastLockRef.current !== attemptId) return
+      toastLockRef.current = null
+      notify(message, tone)
+    }
     if (!file) {
-      notify('Selecione o arquivo Operacoes.', 'warning')
+      notifyOnce('Selecione o arquivo Operacoes.', 'warning')
       return
     }
     const name = file.name.toLowerCase()
     if (!name.endsWith('.xlsx') && !name.endsWith('.xls')) {
-      notify('Formato invalido. Use .xlsx.', 'warning')
+      notifyOnce('Formato invalido. Use .xlsx.', 'warning')
       return
     }
     setSyncing(true)
     setSyncResult(null)
     try {
+      if (debugEnabled) {
+        console.info('[receita-estruturadas] sync:start', { name: file.name, size: file.size })
+      }
       const formData = new FormData()
       formData.append('file', file)
       const response = await fetch('/api/receitas/estruturadas/import', {
@@ -91,7 +117,8 @@ const RevenueStructured = () => {
         const missing = payload?.missingColumns?.length
           ? ` Colunas faltando: ${payload.missingColumns.join(', ')}`
           : ''
-        notify(payload?.error ? `${payload.error}${missing}` : 'Falha ao importar.', 'warning')
+        notifyOnce(payload?.error ? `${payload.error}${missing}` : 'Falha ao importar.', 'warning')
+        if (debugEnabled) console.error('[receita-estruturadas] sync:error', payload)
         return
       }
       const payload = await response.json()
@@ -99,22 +126,43 @@ const RevenueStructured = () => {
       setEntries(nextEntries)
       saveStructuredRevenue(nextEntries)
       const stats = payload.stats || {}
+      const monthFromStats = stats.months?.[stats.months.length - 1] || ''
+      if (monthFromStats) setPeriodKey(monthFromStats)
+      const periodKeyResolved = monthFromStats || resolvedPeriodKey
+      const periodEntries = periodKeyResolved
+        ? nextEntries.filter((entry) => getMonthKey(entry.dataEntrada) === periodKeyResolved)
+        : nextEntries
       setSyncResult({
-        importados: stats.rowsValid ?? nextEntries.length,
+        importados: periodEntries.length,
         duplicados: 0,
         rejeitados: stats.rowsSkipped ?? 0,
         avisos: 0,
       })
-      notify(`Importacao concluida. ${stats.rowsValid ?? nextEntries.length} linhas validas.`, 'success')
-      if (stats.months?.length) {
-        setPeriodKey(stats.months[stats.months.length - 1])
+      const now = new Date().toISOString().slice(0, 16).replace('T', ' ')
+      setLastSyncAt(now)
+      try {
+        localStorage.setItem('pwr.receita.estruturadas.lastSyncAt', now)
+      } catch {
+        // noop
       }
-    } catch {
-      notify('Falha ao importar a planilha.', 'warning')
+      notifyOnce(`Importacao concluida. ${periodEntries.length} linhas validas.`, 'success')
+      if (debugEnabled) {
+        console.info('[receita-estruturadas] sync:success', {
+          rowsRead: stats.rowsRead,
+          rowsValid: stats.rowsValid,
+          totalCommission: stats.totalCommission,
+          months: stats.months,
+          periodKey: periodKeyResolved,
+          periodCount: periodEntries.length,
+        })
+      }
+    } catch (error) {
+      notifyOnce(error?.message ? `Falha ao importar: ${error.message}` : 'Falha ao importar a planilha.', 'warning')
+      if (debugEnabled) console.error('[receita-estruturadas] sync:exception', error)
     } finally {
       setSyncing(false)
     }
-  }, [notify])
+  }, [debugEnabled, notify, resolvedPeriodKey, syncing])
 
   return (
     <div className="page">
@@ -125,6 +173,7 @@ const RevenueStructured = () => {
           { label: 'Periodo selecionado', value: resolvedPeriodKey ? buildMonthLabel(resolvedPeriodKey) : '?' },
           { label: 'Entradas', value: rows.length },
           { label: 'Total do mes', value: formatCurrency(totalMes) },
+          { label: 'Ultima sync', value: lastSyncAt || '?' },
         ]}
         actions={[{ label: 'Exportar resumo', icon: 'download', variant: 'btn-secondary' }]}
       />

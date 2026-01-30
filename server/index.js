@@ -5,6 +5,7 @@ const XLSX = require('xlsx')
 const { getBrapiToken, getDividendsResult } = require('../api/lib/dividends')
 
 const PORT = process.env.PORT || 4170
+const debugReceitas = process.env.DEBUG_RECEITAS === '1'
 
 const app = express()
 app.use(cors())
@@ -349,6 +350,17 @@ const parseStructuredReceitas = (buffer) => {
       source: 'import',
     }
   }).filter(Boolean)
+
+  if (debugReceitas) {
+    console.log('[receitas] structured:stats', {
+      sheetName,
+      rowsRead: rows.length,
+      rowsValid,
+      rowsSkipped,
+      totalCommission: Number(totalCommission.toFixed(2)),
+      months: Array.from(months).sort(),
+    })
+  }
 
   return {
     entries,
