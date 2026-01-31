@@ -112,20 +112,33 @@ const RevenueStructured = () => {
         method: 'POST',
         body: formData,
       })
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}))
-        const missing = payload?.missingColumns?.length
-          ? ` Colunas faltando: ${payload.missingColumns.join(', ')}`
-          : ''
-        notifyOnce(payload?.error ? `${payload.error}${missing}` : 'Falha ao importar.', 'warning')
-        if (debugEnabled) console.error('[receita-estruturadas] sync:error', payload)
+      const contentType = response.headers.get('content-type') || ''
+      const isJson = contentType.includes('application/json')
+      const payload = isJson ? await response.json().catch(() => ({})) : null
+      const responseText = !isJson ? await response.text().catch(() => '') : ''
+      if (!response.ok || payload?.ok === false) {
+        const missing = payload?.error?.details?.missing?.length
+          ? ` Colunas faltando: ${payload.error.details.missing.join(', ')}`
+          : payload?.missingColumns?.length
+            ? ` Colunas faltando: ${payload.missingColumns.join(', ')}`
+            : ''
+        const message = response.status === 404
+          ? 'Endpoint de importacao nao existe no ambiente atual.'
+          : payload?.error?.message
+            ? `${payload.error.message}${missing}`
+            : payload?.error
+              ? `${payload.error}${missing}`
+              : isJson
+                ? `Falha ao importar (status ${response.status}).`
+                : `Resposta nao JSON (status ${response.status}).`
+        notifyOnce(message, 'warning')
+        if (debugEnabled) console.error('[receita-estruturadas] sync:error', { status: response.status, payload, responseText })
         return
       }
-      const payload = await response.json()
       const nextEntries = Array.isArray(payload.entries) ? payload.entries : []
       setEntries(nextEntries)
       saveStructuredRevenue(nextEntries)
-      const stats = payload.stats || {}
+      const stats = payload.summary || payload.stats || {}
       const monthFromStats = stats.months?.[stats.months.length - 1] || ''
       if (monthFromStats) setPeriodKey(monthFromStats)
       const periodKeyResolved = monthFromStats || resolvedPeriodKey
