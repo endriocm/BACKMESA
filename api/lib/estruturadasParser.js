@@ -72,6 +72,10 @@ const parseStructuredReceitas = (buffer) => {
     fixing: 'fixing',
     comissao: 'comissao',
   }
+  const optional = {
+    quantidade: ['quantidade', 'quantidadeacoes', 'quantidadeacao', 'qtd', 'qtde'],
+    precoCompra: ['precocompraacao', 'precocompra', 'precodecompra', 'precoacao', 'preco'],
+  }
   const missing = Object.values(required).filter((key) => !headerMap[key])
   if (missing.length) {
     return {
@@ -87,6 +91,10 @@ const parseStructuredReceitas = (buffer) => {
   const entries = rows.map((row, index) => {
     const dataInclusao = parseDateBr(row[headerMap[required.dataInclusao]])
     const comissao = toNumber(row[headerMap[required.comissao]])
+    const quantidadeHeader = optional.quantidade.find((key) => headerMap[key])
+    const precoHeader = optional.precoCompra.find((key) => headerMap[key])
+    const quantidade = quantidadeHeader ? toNumber(row[headerMap[quantidadeHeader]]) : null
+    const precoCompra = precoHeader ? toNumber(row[headerMap[precoHeader]]) : null
     if (!dataInclusao || comissao == null) {
       rowsSkipped += 1
       return null
@@ -102,6 +110,8 @@ const parseStructuredReceitas = (buffer) => {
       ativo: String(row[headerMap[required.ativo]] || '').trim(),
       vencimento: parseDateBr(row[headerMap[required.fixing]]) || '',
       comissao,
+      quantidade: quantidade ?? null,
+      precoCompra: precoCompra ?? null,
       origem: 'Estruturadas',
       source: 'import',
     }

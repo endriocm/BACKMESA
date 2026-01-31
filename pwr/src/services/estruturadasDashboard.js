@@ -1,0 +1,162 @@
+import { normalizeDateKey } from '../utils/dateKey'
+
+const normalizeText = (value) => String(value || '')
+  .trim()
+  .toLowerCase()
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+
+const parseNumberSafe = (value) => {
+  if (value == null || value === '') return null
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null
+  const raw = String(value).trim()
+  if (!raw) return null
+  let cleaned = raw.replace(/[^\d,.-]/g, '')
+  if (!cleaned) return null
+  const hasComma = cleaned.includes(',')
+  const hasDot = cleaned.includes('.')
+  if (hasComma && hasDot) {
+    if (cleaned.lastIndexOf(',') > cleaned.lastIndexOf('.')) {
+      cleaned = cleaned.replace(/\./g, '').replace(/,/g, '.')
+    } else {
+      cleaned = cleaned.replace(/,/g, '')
+    }
+  } else if (hasComma) {
+    cleaned = cleaned.replace(/,/g, '.')
+  }
+  const parsed = Number(cleaned)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+const normalizeEstrutura = (value) => normalizeText(value)
+  .replace(/\s+/g, ' ')
+
+const isOptionStructure = (estrutura) => {
+  const normalized = normalizeEstrutura(estrutura)
+  return normalized === 'call'
+    || normalized === 'put'
+    || normalized === 'call spread'
+    || normalized === 'put spread'
+}
+
+const buildKey = ({ codigoCliente, ativo, estrutura, vencimento, quantidade }) => {
+  const cliente = normalizeText(codigoCliente)
+  const ativoKey = normalizeText(ativo)
+  const estruturaKey = normalizeEstrutura(estrutura)
+  const venc = normalizeDateKey(vencimento)
+  if (!cliente || !ativoKey || !estruturaKey || !venc) return ''
+  const qty = quantidade != null ? String(quantidade) : ''
+  return [cliente, ativoKey, estruturaKey, venc, qty].join('|')
+}
+
+export const buildVencimentoIndex = (rows) => {
+  const index = new Map()
+  const list = Array.isArray(rows) ? rows : []
+  list.forEach((row) => {
+    const quantidade = parseNumberSafe(row.quantidade ?? row.qtyBase ?? row.quantidadeAtual)
+    const base = buildKey({
+      codigoCliente: row.codigoCliente || row.cliente,
+      ativo: row.ativo,
+      estrutura: row.estrutura,
+      vencimento: row.vencimento,
+      quantidade,
+    })
+    if (base) index.set(base, row)
+    const withoutQty = buildKey({
+      codigoCliente: row.codigoCliente || row.cliente,
+      ativo: row.ativo,
+      estrutura: row.estrutura,
+      vencimento: row.vencimento,
+      quantidade: '',
+    })
+    if (withoutQty && !index.has(withoutQty)) index.set(withoutQty, row)
+  })
+  return index
+}
+
+export const buildEstruturadasDashboard = ({ entries = [], vencimentoIndex }) => {
+  const filtered = Array.isArray(entries) ? entries : []
+  const index = vencimentoIndex instanceof Map ? vencimentoIndex : new Map()
+
+  let totalRevenue = 0
+  let totalVolume = 0
+  let exceptionsCount = 0
+  let exceptionsMatched = 0
+  let exceptionsFallback = 0
+  const uniqueClients = new Set()
+  const invalidRows = []
+  const byEstrutura = new Map()
+
+  filtered.forEach((entry, idx) => {
+    const cliente = String(entry.codigoCliente || '').trim()
+    if (cliente) uniqueClients.add(cliente)
+
+    const comissao = parseNumberSafe(entry.comissao)
+    if (comissao != null) totalRevenue += comissao
+
+    const qty = parseNumberSafe(entry.quantidade)
+    const precoCompra = parseNumberSafe(entry.precoCompra)
+    let volume = 0
+
+    if (isOptionStructure(entry.estrutura)) {
+      exceptionsCount += 1
+      const keyWithQty = buildKey({
+        codigoCliente: entry.codigoCliente,
+        ativo: entry.ativo,
+        estrutura: entry.estrutura,
+        vencimento: entry.vencimento,
+        quantidade: qty,
+      })
+      const keyWithoutQty = buildKey({
+        codigoCliente: entry.codigoCliente,
+        ativo: entry.ativo,
+        estrutura: entry.estrutura,
+        vencimento: entry.vencimento,
+        quantidade: '',
+      })
+      const matched = index.get(keyWithQty) || index.get(keyWithoutQty)
+      const custoUnitario = parseNumberSafe(matched?.custoUnitario)
+      if (custoUnitario != null && qty != null) {
+        volume = custoUnitario * qty
+        exceptionsMatched += 1
+      } else {
+        exceptionsFallback += 1
+        volume = qty != null && precoCompra != null ? qty * precoCompra : 0
+      }
+    } else {
+      volume = qty != null && precoCompra != null ? qty * precoCompra : 0
+    }
+
+    if ((qty == null || precoCompra == null) && volume === 0) {
+      invalidRows.push(idx)
+    }
+
+    totalVolume += volume
+    const estruturaLabel = entry.estrutura || '—'
+    const current = byEstrutura.get(estruturaLabel) || { receita: 0, volume: 0, count: 0 }
+    byEstrutura.set(estruturaLabel, {
+      receita: current.receita + (comissao || 0),
+      volume: current.volume + volume,
+      count: current.count + 1,
+    })
+  })
+
+  const top5 = Array.from(byEstrutura.entries())
+    .map(([estrutura, data]) => ({ estrutura, ...data }))
+    .sort((a, b) => b.receita - a.receita)
+    .slice(0, 5)
+
+  return {
+    kpis: {
+      uniqueClients: uniqueClients.size,
+      totalRevenue,
+      totalVolume,
+      totalEntries: filtered.length,
+      exceptionsCount,
+      exceptionsMatched,
+      exceptionsFallback,
+      invalidRows: invalidRows.length,
+    },
+    top5,
+  }
+}

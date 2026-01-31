@@ -3,7 +3,7 @@ import PageHeader from '../components/PageHeader'
 import SyncPanel from '../components/SyncPanel'
 import DataTable from '../components/DataTable'
 import Icon from '../components/Icons'
-import { formatCurrency, formatDate } from '../utils/format'
+import { formatCurrency, formatDate, formatNumber } from '../utils/format'
 import { normalizeDateKey } from '../utils/dateKey'
 import { useToast } from '../hooks/useToast'
 import { useGlobalFilters } from '../contexts/GlobalFilterContext'
@@ -11,10 +11,14 @@ import { enrichRow } from '../services/tags'
 import { buildMonthLabel, getMonthKey, loadStructuredRevenue, saveStructuredRevenue } from '../services/revenueStructured'
 import MultiSelect from '../components/MultiSelect'
 import TreeSelect from '../components/TreeSelect'
+import { getCurrentUserKey } from '../services/currentUser'
+import { loadLastImported } from '../services/vencimentoCache'
+import { buildEstruturadasDashboard, buildVencimentoIndex } from '../services/estruturadasDashboard'
 
 const RevenueStructured = () => {
   const { notify } = useToast()
   const { selectedBroker, tagsIndex } = useGlobalFilters()
+  const [userKey] = useState(() => getCurrentUserKey())
   const [filters, setFilters] = useState({ search: '', cliente: '', assessor: '', ativo: '', estrutura: '', broker: [] })
   const [entries, setEntries] = useState(() => loadStructuredRevenue())
   const [selectedDays, setSelectedDays] = useState([])
@@ -141,6 +145,12 @@ const RevenueStructured = () => {
 
   const periodTree = useMemo(() => buildDateTree(enrichedEntries), [enrichedEntries])
 
+  const vencimentoCache = useMemo(() => loadLastImported(userKey), [userKey])
+  const vencimentoIndex = useMemo(
+    () => buildVencimentoIndex(vencimentoCache?.rows || []),
+    [vencimentoCache],
+  )
+
   const rows = useMemo(() => {
     const daySet = new Set(effectiveDays)
     return enrichedEntries
@@ -157,6 +167,16 @@ const RevenueStructured = () => {
         return true
       })
   }, [effectiveDays, enrichedEntries, filters, selectedBroker])
+
+  const dashboard = useMemo(
+    () => buildEstruturadasDashboard({ entries: rows, vencimentoIndex }),
+    [rows, vencimentoIndex],
+  )
+
+  const top5Max = useMemo(
+    () => Math.max(...dashboard.top5.map((item) => item.receita), 1),
+    [dashboard.top5],
+  )
 
   const pageSize = 100
   const [page, setPage] = useState(1)
@@ -308,6 +328,65 @@ const RevenueStructured = () => {
         running={syncing}
         result={syncResult}
       />
+
+      <section className="panel">
+        <div className="panel-head">
+          <div>
+            <h3>Dashboard do periodo</h3>
+            <p className="muted">Resumo baseado no recorte filtrado da tabela.</p>
+          </div>
+        </div>
+        <div className="kpi-grid">
+          <div className="card kpi-card">
+            <div className="kpi-label">CPFs unicos</div>
+            <div className="kpi-value">{formatNumber(dashboard.kpis.uniqueClients)}</div>
+          </div>
+          <div className="card kpi-card">
+            <div className="kpi-label">Receita total</div>
+            <div className="kpi-value">{formatCurrency(dashboard.kpis.totalRevenue)}</div>
+          </div>
+          <div className="card kpi-card">
+            <div className="kpi-label">Volume financeiro</div>
+            <div className="kpi-value">{formatCurrency(dashboard.kpis.totalVolume)}</div>
+          </div>
+          <div className="card kpi-card">
+            <div className="kpi-label">Entradas</div>
+            <div className="kpi-value">{formatNumber(dashboard.kpis.totalEntries)}</div>
+          </div>
+        </div>
+        <div className="card segment-card">
+          <div className="card-head">
+            <h3>Top 5 estruturas por receita</h3>
+            <span className="muted">Volume exibido como referencia secundaria.</span>
+          </div>
+          <div className="segment-list">
+            {dashboard.top5.length ? dashboard.top5.map((item) => {
+              const percent = (item.receita / top5Max) * 100
+              return (
+                <div key={item.estrutura} className="segment-row">
+                  <div className="segment-dot cyan" />
+                  <div className="segment-info">
+                    <strong>{item.estrutura}</strong>
+                    <span>{formatCurrency(item.receita)} • {formatCurrency(item.volume)}</span>
+                  </div>
+                  <div className="segment-bar">
+                    <span style={{ width: `${percent}%` }} className="cyan" />
+                  </div>
+                </div>
+              )
+            }) : (
+              <div className="muted">Sem dados suficientes no periodo.</div>
+            )}
+          </div>
+          {debugEnabled ? (
+            <div className="muted">
+              Excecoes: {dashboard.kpis.exceptionsCount} •
+              Matched: {dashboard.kpis.exceptionsMatched} •
+              Fallback: {dashboard.kpis.exceptionsFallback}
+            </div>
+          ) : null}
+        </div>
+      </section>
 
       <section className="panel">
         <div className="panel-head">
