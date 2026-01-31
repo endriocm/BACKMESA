@@ -20,7 +20,7 @@ const RevenueBmf = () => {
       .filter((entry) => {
         const query = filters.search.toLowerCase()
         if (query && !`${entry.cliente} ${entry.nomeCliente || ''} ${entry.ativo}`.toLowerCase().includes(query)) return false
-        if (selectedBroker && entry.broker !== selectedBroker) return false
+        if (selectedBroker.length && !selectedBroker.includes(String(entry.broker || '').trim())) return false
         if (filters.ativo && entry.ativo !== filters.ativo) return false
         return true
       })

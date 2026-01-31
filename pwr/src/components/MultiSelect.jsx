@@ -23,6 +23,7 @@ const MultiSelect = ({
   const [search, setSearch] = useState('')
   const [draft, setDraft] = useState(new Set(value))
   const wrapRef = useRef(null)
+  const selectAllRef = useRef(null)
   const label = useMemo(() => buildLabel(value, options, placeholder), [value, options, placeholder])
 
   useEffect(() => {
@@ -47,6 +48,19 @@ const MultiSelect = ({
     return options.filter((option) => String(option.label || option.value || '').toLowerCase().includes(query))
   }, [options, search])
 
+  const visibleCount = filteredOptions.length
+  const selectedVisibleCount = useMemo(
+    () => filteredOptions.reduce((sum, option) => (draft.has(option.value) ? sum + 1 : sum), 0),
+    [draft, filteredOptions],
+  )
+  const allVisibleSelected = visibleCount > 0 && selectedVisibleCount === visibleCount
+  const noneVisibleSelected = selectedVisibleCount === 0
+
+  useEffect(() => {
+    if (!selectAllRef.current) return
+    selectAllRef.current.indeterminate = !allVisibleSelected && !noneVisibleSelected
+  }, [allVisibleSelected, noneVisibleSelected])
+
   const toggleValue = (next) => {
     setDraft((prev) => {
       const updated = new Set(prev)
@@ -56,8 +70,17 @@ const MultiSelect = ({
     })
   }
 
-  const handleSelectAll = () => setDraft(new Set(options.map((option) => option.value)))
-  const handleClear = () => setDraft(new Set())
+  const handleSelectAllVisible = () => {
+    setDraft((prev) => {
+      const updated = new Set(prev)
+      if (allVisibleSelected) {
+        filteredOptions.forEach((option) => updated.delete(option.value))
+      } else {
+        filteredOptions.forEach((option) => updated.add(option.value))
+      }
+      return updated
+    })
+  }
   const handleApply = () => {
     onChange?.(Array.from(draft).sort())
     setOpen(false)
@@ -94,11 +117,16 @@ const MultiSelect = ({
               onChange={(event) => setSearch(event.target.value)}
             />
           </div>
-          <div className="tree-actions">
-            <button className="btn btn-secondary" type="button" onClick={handleSelectAll}>Selecionar tudo</button>
-            <button className="btn btn-secondary" type="button" onClick={handleClear}>Limpar</button>
-          </div>
           <div className="tree-content">
+            <label className={`select-option ${allVisibleSelected ? 'active' : ''}`}>
+              <input
+                ref={selectAllRef}
+                type="checkbox"
+                checked={allVisibleSelected && !noneVisibleSelected}
+                onChange={handleSelectAllVisible}
+              />
+              <span>(Selecionar tudo)</span>
+            </label>
             {filteredOptions.length ? (
               filteredOptions.map((option) => {
                 const checked = draft.has(option.value)

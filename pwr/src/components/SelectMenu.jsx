@@ -76,10 +76,6 @@ const SelectMenu = ({
               onChange={(event) => setSearch(event.target.value)}
             />
           </div>
-          <div className="tree-actions">
-            <button className="btn btn-secondary" type="button" onClick={() => setDraft('')}>Selecionar tudo</button>
-            <button className="btn btn-secondary" type="button" onClick={() => setDraft('')}>Limpar</button>
-          </div>
           <div className="tree-content">
             {filteredOptions.length ? (
               filteredOptions.map((option) => (

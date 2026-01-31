@@ -60,7 +60,7 @@ const RevenueStructured = () => {
       .filter((entry) => {
         const query = filters.search.toLowerCase()
         if (query && !`${entry.codigoCliente || ''} ${entry.nomeCliente || ''} ${entry.assessor || ''} ${entry.broker || ''} ${entry.ativo || ''} ${entry.estrutura || ''}`.toLowerCase().includes(query)) return false
-        if (selectedBroker && entry.broker !== selectedBroker) return false
+        if (selectedBroker.length && !selectedBroker.includes(String(entry.broker || '').trim())) return false
         if (filters.cliente && entry.codigoCliente !== filters.cliente) return false
         if (filters.assessor && entry.assessor !== filters.assessor) return false
         if (filters.ativo && entry.ativo !== filters.ativo) return false

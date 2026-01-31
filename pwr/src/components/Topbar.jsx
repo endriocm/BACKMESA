@@ -1,5 +1,5 @@
 ﻿import Icon from './Icons'
-import SelectMenu from './SelectMenu'
+import MultiSelect from './MultiSelect'
 import { quickActions } from '../data/navigation'
 import { useGlobalFilters } from '../contexts/GlobalFilterContext'
 
@@ -26,7 +26,7 @@ const Topbar = ({ title, breadcrumbs, onToggleSidebar, currentPath }) => {
         </div>
       </div>
       <div className="topbar-actions">
-        <SelectMenu
+        <MultiSelect
           value={selectedBroker}
           options={brokerOptions}
           onChange={setSelectedBroker}
@@ -34,7 +34,7 @@ const Topbar = ({ title, breadcrumbs, onToggleSidebar, currentPath }) => {
           className="topbar-filter"
           menuClassName="topbar-filter-menu"
         />
-        <SelectMenu
+        <MultiSelect
           value={selectedAssessor}
           options={assessorOptions}
           onChange={setSelectedAssessor}

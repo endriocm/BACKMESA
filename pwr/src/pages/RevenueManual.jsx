@@ -72,7 +72,7 @@ const RevenueManual = () => {
     return entries
       .map((entry) => enrichRow(entry, tagsIndex))
       .filter((entry) => {
-        if (selectedBroker && entry.broker !== selectedBroker) return false
+        if (selectedBroker.length && !selectedBroker.includes(String(entry.broker || '').trim())) return false
         return true
       })
   }, [entries, selectedBroker, tagsIndex])

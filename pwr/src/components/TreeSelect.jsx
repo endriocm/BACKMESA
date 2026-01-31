@@ -27,7 +27,7 @@ const TreeCheckbox = ({ label, count, checked, indeterminate, depth = 0, onToggl
 const TreeSelect = ({
   value = [],
   tree = [],
-  allValues = [],
+  allValues: _allValues = [],
   onChange,
   placeholder = 'Selecionar',
   className = '',
@@ -36,6 +36,7 @@ const TreeSelect = ({
   const [search, setSearch] = useState('')
   const [draft, setDraft] = useState(new Set(value))
   const wrapRef = useRef(null)
+  const selectAllRef = useRef(null)
 
   useEffect(() => {
     const handleOutside = (event) => {
@@ -52,17 +53,6 @@ const TreeSelect = ({
       document.removeEventListener('keydown', handleEscape)
     }
   }, [])
-
-  const allValuesList = useMemo(() => {
-    if (allValues.length) return allValues
-    const collect = (nodes) => nodes.flatMap((node) => {
-      if (node?.values?.length) return node.values
-      if (node?.children?.length) return collect(node.children)
-      if (node?.value) return [node.value]
-      return []
-    })
-    return Array.from(new Set(collect(tree))).sort()
-  }, [allValues, tree])
 
   const summaryLabel = value.length
     ? `${value.length} selecionado${value.length > 1 ? 's' : ''}`
@@ -82,6 +72,30 @@ const TreeSelect = ({
 
     return tree.map(filterNode).filter(Boolean)
   }, [search, tree])
+
+  const visibleValues = useMemo(() => {
+    const collect = (nodes) => nodes.flatMap((node) => {
+      if (node?.values?.length) return node.values
+      if (node?.children?.length) return collect(node.children)
+      if (node?.value) return [node.value]
+      return []
+    })
+    const list = collect(filteredTree)
+    return Array.from(new Set(list))
+  }, [filteredTree])
+
+  const selectedVisibleCount = useMemo(
+    () => visibleValues.reduce((sum, value) => (draft.has(value) ? sum + 1 : sum), 0),
+    [draft, visibleValues],
+  )
+
+  const allVisibleSelected = visibleValues.length > 0 && selectedVisibleCount === visibleValues.length
+  const noneVisibleSelected = selectedVisibleCount === 0
+
+  useEffect(() => {
+    if (!selectAllRef.current) return
+    selectAllRef.current.indeterminate = !allVisibleSelected && !noneVisibleSelected
+  }, [allVisibleSelected, noneVisibleSelected])
 
   const getState = (values) => {
     if (!values || !values.length) return { checked: false, indeterminate: false }
@@ -113,8 +127,10 @@ const TreeSelect = ({
     setOpen(false)
   }
 
-  const handleClear = () => setDraft(new Set())
-  const handleSelectAll = () => setDraft(new Set(allValuesList))
+  const handleSelectAllVisible = () => {
+    if (!visibleValues.length) return
+    toggleValues(visibleValues, !allVisibleSelected)
+  }
 
   const renderNodes = (nodes, depth = 0) => {
     return nodes.map((node) => {
@@ -173,11 +189,16 @@ const TreeSelect = ({
               onChange={(event) => setSearch(event.target.value)}
             />
           </div>
-          <div className="tree-actions">
-            <button className="btn btn-secondary" type="button" onClick={handleSelectAll}>Selecionar tudo</button>
-            <button className="btn btn-secondary" type="button" onClick={handleClear}>Limpar</button>
-          </div>
           <div className="tree-content">
+            <label className="tree-node tree-select-all">
+              <input
+                ref={selectAllRef}
+                type="checkbox"
+                checked={allVisibleSelected && !noneVisibleSelected}
+                onChange={handleSelectAllVisible}
+              />
+              <span>(Selecionar tudo)</span>
+            </label>
             {filteredTree.length ? renderNodes(filteredTree) : <div className="select-empty">Sem resultados</div>}
           </div>
           <div className="tree-footer">

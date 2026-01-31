@@ -227,14 +227,6 @@ const buildVencimentoTree = (items) => {
   return { tree, allValues: Array.from(allValues).sort() }
 }
 
-const buildOptions = (values, placeholder) => {
-  const unique = Array.from(new Set(values.filter((value) => value != null && value !== '')))
-    .map((value) => String(value).trim())
-    .filter(Boolean)
-    .sort((a, b) => a.localeCompare(b, 'pt-BR'))
-  return [{ value: '', label: placeholder }, ...unique.map((value) => ({ value, label: value }))]
-}
-
 const buildMultiOptions = (values) => {
   const unique = Array.from(new Set(values.filter((value) => value != null && value !== '')))
     .map((value) => String(value).trim())
@@ -353,7 +345,7 @@ const Vencimento = () => {
   const [userKey] = useState(() => getCurrentUserKey())
   const [filters, setFilters] = useState({
     search: '',
-    broker: '',
+    broker: [],
     status: '',
     vencimentos: [],
     estruturas: [],
@@ -792,7 +784,7 @@ const Vencimento = () => {
     () => operations.map((operation) => enrichRow(operation, tagsIndex)),
     [operations, tagsIndex],
   )
-  const brokerOptions = useMemo(() => buildOptions(enrichedOperations.map((item) => item.broker), 'Broker'), [enrichedOperations])
+  const brokerOptions = useMemo(() => buildMultiOptions(enrichedOperations.map((item) => item.broker)), [enrichedOperations])
   const operationsByPeriod = useMemo(() => {
     if (!filters.vencimentos.length) return enrichedOperations
     const set = new Set(filters.vencimentos)
@@ -910,9 +902,9 @@ const Vencimento = () => {
         const query = filters.search.toLowerCase()
         const searchBase = `${entry.codigoCliente || ''} ${entry.cliente || ''} ${entry.nomeCliente || ''} ${entry.ativo || ''} ${entry.estrutura || ''} ${entry.assessor || ''} ${entry.broker || ''}`.toLowerCase()
         if (query && !searchBase.includes(query)) return false
-        if (selectedBroker && entry.broker !== selectedBroker) return false
-        if (selectedAssessor && entry.assessor !== selectedAssessor) return false
-        if (filters.broker && entry.broker !== filters.broker) return false
+        if (selectedBroker.length && !selectedBroker.includes(String(entry.broker || '').trim())) return false
+        if (selectedAssessor.length && !selectedAssessor.includes(String(entry.assessor || '').trim())) return false
+        if (filters.broker.length && !filters.broker.includes(String(entry.broker || '').trim())) return false
         if (filters.assessores?.length && !filters.assessores.includes(entry.assessor)) return false
         if (clientCodeFilter) {
           const clienteMatch = String(entry.codigoCliente || entry.cliente || '').trim()
@@ -1212,7 +1204,7 @@ const Vencimento = () => {
     : ''
 
   const chips = [
-      { key: 'broker', label: filters.broker, onClear: () => setFilters((prev) => ({ ...prev, broker: '' })) },
+      { key: 'broker', label: filters.broker.length ? `Broker (${filters.broker.length})` : '', onClear: () => setFilters((prev) => ({ ...prev, broker: [] })) },
     { key: 'assessores', label: filters.assessores.length ? `Assessores (${filters.assessores.length})` : '', onClear: () => setFilters((prev) => ({ ...prev, assessores: [] })) },
     { key: 'clientCode', label: clientCodeFilter, onClear: () => setClientCodeFilter('') },
     { key: 'estruturas', label: filters.estruturas.length ? `Estruturas (${filters.estruturas.length})` : '', onClear: () => setFilters((prev) => ({ ...prev, estruturas: [] })) },
@@ -1224,7 +1216,7 @@ const Vencimento = () => {
     const handleClearFilters = useCallback(() => {
       setFilters({
         search: '',
-        broker: '',
+        broker: [],
         status: '',
         vencimentos: [],
         estruturas: [],
@@ -1506,7 +1498,7 @@ const Vencimento = () => {
           </div>
         </div>
         <div className="filter-grid">
-          <SelectMenu
+          <MultiSelect
             value={filters.broker}
             options={brokerOptions}
             onChange={(value) => setFilters((prev) => ({ ...prev, broker: value }))}

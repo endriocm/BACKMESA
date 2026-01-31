@@ -20,7 +20,7 @@ const RevenueBovespa = () => {
       .filter((entry) => {
         const query = filters.search.toLowerCase()
         if (query && !`${entry.cliente} ${entry.nomeCliente || ''} ${entry.ativo}`.toLowerCase().includes(query)) return false
-        if (selectedBroker && entry.broker !== selectedBroker) return false
+        if (selectedBroker.length && !selectedBroker.includes(String(entry.broker || '').trim())) return false
         if (filters.ativo && entry.ativo !== filters.ativo) return false
         if (filters.cliente && (entry.nomeCliente || entry.cliente) !== filters.cliente) return false
         return true

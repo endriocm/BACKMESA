@@ -39,7 +39,7 @@ const Tags = () => {
     ))
     return items.filter((item) => {
       const input = query.toLowerCase()
-      if (selectedBroker && item.broker !== selectedBroker) return false
+      if (selectedBroker.length && !selectedBroker.includes(String(item.broker || '').trim())) return false
       if (!input) return true
       return `${item.cliente} ${item.nomeCliente} ${item.assessor} ${item.broker}`.toLowerCase().includes(input)
     })

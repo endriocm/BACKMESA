@@ -23,6 +23,15 @@ const normalizeValue = (value) => {
   return String(value).trim()
 }
 
+const normalizeList = (value) => {
+  if (!value) return []
+  if (Array.isArray(value)) {
+    return value.map(normalizeValue).filter(Boolean)
+  }
+  const normalized = normalizeValue(value)
+  return normalized ? [normalized] : []
+}
+
 const parseStored = (raw) => {
   if (!raw) return null
   try {
@@ -36,8 +45,8 @@ const GlobalFilterContext = createContext(null)
 
 export const GlobalFilterProvider = ({ children }) => {
   const [userKey] = useState(() => getCurrentUserKey())
-  const [selectedBroker, setSelectedBroker] = useState('')
-  const [selectedAssessor, setSelectedAssessor] = useState('')
+  const [selectedBroker, setSelectedBroker] = useState([])
+  const [selectedAssessor, setSelectedAssessor] = useState([])
   const [clientCodeFilter, setClientCodeFilter] = useState('')
   const [tagsPayload, setTagsPayload] = useState(null)
   const channelRef = useRef(null)
@@ -48,11 +57,11 @@ export const GlobalFilterProvider = ({ children }) => {
   const tagsIndex = useMemo(() => buildTagIndex(tagsPayload), [tagsPayload])
   const brokerOptions = useMemo(() => {
     const base = tagsIndex?.brokers || []
-    return [{ value: '', label: 'Todos os brokers' }, ...base.map((item) => ({ value: item, label: item }))]
+    return base.map((item) => ({ value: item, label: item }))
   }, [tagsIndex])
   const assessorOptions = useMemo(() => {
     const base = tagsIndex?.assessors || []
-    return [{ value: '', label: 'Todos os assessores' }, ...base.map((item) => ({ value: item, label: item }))]
+    return base.map((item) => ({ value: item, label: item }))
   }, [tagsIndex])
 
   const refreshTags = useCallback(async () => {
@@ -68,8 +77,8 @@ export const GlobalFilterProvider = ({ children }) => {
   const applyRemote = useCallback((payload) => {
     if (!payload) return
     applyingRemoteRef.current = true
-    setSelectedBroker(normalizeValue(payload.broker))
-    setSelectedAssessor(normalizeValue(payload.assessor))
+    setSelectedBroker(normalizeList(payload.broker))
+    setSelectedAssessor(normalizeList(payload.assessor))
     setClientCodeFilter(normalizeValue(payload.clientCode))
     setTimeout(() => {
       applyingRemoteRef.current = false
@@ -80,8 +89,8 @@ export const GlobalFilterProvider = ({ children }) => {
     if (!userKey) return
     const stored = parseStored(localStorage.getItem(buildKey(userKey)))
     if (stored) {
-      setSelectedBroker(normalizeValue(stored.broker))
-      setSelectedAssessor(normalizeValue(stored.assessor))
+      setSelectedBroker(normalizeList(stored.broker))
+      setSelectedAssessor(normalizeList(stored.assessor))
       setClientCodeFilter(normalizeValue(stored.clientCode))
     }
     loadedRef.current = true
@@ -91,8 +100,8 @@ export const GlobalFilterProvider = ({ children }) => {
     if (!userKey || !loadedRef.current || applyingRemoteRef.current) return
     const payload = {
       version: STORAGE_VERSION,
-      broker: normalizeValue(selectedBroker),
-      assessor: normalizeValue(selectedAssessor),
+      broker: normalizeList(selectedBroker),
+      assessor: normalizeList(selectedAssessor),
       clientCode: normalizeValue(clientCodeFilter),
       updatedAt: Date.now(),
     }

@@ -536,6 +536,11 @@ button {
   border-radius: 12px;
   padding: 6px;
   box-shadow: var(--shadow-md);
+  overflow: visible;
+  max-height: none;
+}
+
+.select-menu.scrollable {
   max-height: 260px;
   overflow-y: auto;
 }
@@ -550,6 +555,7 @@ button {
   color: var(--text);
   background: transparent;
   cursor: pointer;
+  gap: 8px;
 }
 
 .select-option:hover {
@@ -592,12 +598,6 @@ button {
   width: 100%;
 }
 
-.tree-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
 .tree-content {
   display: grid;
   gap: 6px;
@@ -618,8 +618,63 @@ button {
   background: rgba(255, 255, 255, 0.06);
 }
 
-.tree-node input {
-  accent-color: var(--cyan);
+.select-option input[type='checkbox'],
+.tree-node input[type='checkbox'] {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--stroke);
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.02);
+  display: inline-grid;
+  place-items: center;
+  margin: 0;
+  flex-shrink: 0;
+  outline: none;
+}
+
+.select-option input[type='checkbox']:focus-visible,
+.tree-node input[type='checkbox']:focus-visible {
+  box-shadow: 0 0 0 2px rgba(40, 242, 230, 0.35);
+  border-color: rgba(40, 242, 230, 0.7);
+}
+
+.select-option input[type='checkbox']::after,
+.tree-node input[type='checkbox']::after {
+  content: '';
+  width: 6px;
+  height: 10px;
+  border-right: 2px solid #05070a;
+  border-bottom: 2px solid #05070a;
+  transform: rotate(45deg);
+  opacity: 0;
+}
+
+.select-option input[type='checkbox']:checked,
+.tree-node input[type='checkbox']:checked {
+  background: var(--cyan);
+  border-color: rgba(40, 242, 230, 0.7);
+}
+
+.select-option input[type='checkbox']:checked::after,
+.tree-node input[type='checkbox']:checked::after {
+  opacity: 1;
+}
+
+.select-option input[type='checkbox']:indeterminate,
+.tree-node input[type='checkbox']:indeterminate {
+  background: var(--cyan);
+  border-color: rgba(40, 242, 230, 0.7);
+}
+
+.select-option input[type='checkbox']:indeterminate::after,
+.tree-node input[type='checkbox']:indeterminate::after {
+  width: 10px;
+  height: 2px;
+  border: none;
+  background: #05070a;
+  transform: none;
+  opacity: 1;
 }
 
 .tree-children {
