@@ -6,25 +6,15 @@ import { formatCurrency, formatDate } from '../utils/format'
 import { useToast } from '../hooks/useToast'
 import { useGlobalFilters } from '../contexts/GlobalFilterContext'
 import { enrichRow } from '../services/tags'
-
-const initialEntries = [
-  {
-    id: 'mn-2101',
-    data: '2026-01-22',
-    cliente: 'Helios Invest',
-    assessor: 'G. Souza',
-    ativo: 'WDOF26',
-    valor: 145000,
-    status: 'ok',
-  },
-]
+import { appendManualRevenue, loadManualRevenue } from '../services/revenueStore'
 
 const RevenueManual = () => {
   const { notify } = useToast()
   const { selectedBroker, tagsIndex } = useGlobalFilters()
-  const [entries, setEntries] = useState(initialEntries)
+  const [entries, setEntries] = useState(() => loadManualRevenue())
   const [form, setForm] = useState({
     data: '2026-01-26',
+    origem: 'Bovespa',
     cliente: '',
     assessor: '',
     ativo: '',
@@ -37,20 +27,22 @@ const RevenueManual = () => {
 
   const handleSubmit = (event) => {
     event.preventDefault()
-    if (!form.cliente || !form.assessor || !form.ativo || !form.valor) {
+    if (!form.origem || !form.cliente || !form.assessor || !form.ativo || !form.valor) {
       notify('Preencha todos os campos obrigatorios.', 'warning')
       return
     }
     const next = {
       id: `mn-${Date.now()}`,
       data: form.data,
+      origem: form.origem,
       cliente: form.cliente,
       assessor: form.assessor,
       ativo: form.ativo,
       valor: Number(form.valor),
       status: 'ok',
     }
-    setEntries((prev) => [next, ...prev])
+    const nextEntries = appendManualRevenue(next)
+    setEntries(nextEntries)
     notify('Lancamento manual registrado.', 'success')
     setForm((prev) => ({ ...prev, cliente: '', assessor: '', ativo: '', valor: '' }))
   }
@@ -94,6 +86,14 @@ const RevenueManual = () => {
           </div>
         </div>
         <form className="form-grid" onSubmit={handleSubmit}>
+          <label>
+            Tipo
+            <select className="input" value={form.origem} onChange={handleChange('origem')}>
+              <option value="Bovespa">Bovespa</option>
+              <option value="BMF">BMF</option>
+              <option value="Estruturadas">Estruturadas</option>
+            </select>
+          </label>
           <label>
             Data
             <input className="input" type="date" value={form.data} onChange={handleChange('data')} />

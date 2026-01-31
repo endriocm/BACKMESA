@@ -30,6 +30,8 @@ const TreeSelect = ({
   allValues: _allValues = [],
   onChange,
   placeholder = 'Selecionar',
+  searchable = true,
+  searchPlaceholder = 'Buscar',
   className = '',
 }) => {
   const [open, setOpen] = useState(false)
@@ -179,16 +181,18 @@ const TreeSelect = ({
       </button>
       {open ? (
         <div className="select-menu tree-menu" role="listbox">
-          <div className="tree-search">
-            <Icon name="search" size={14} />
-            <input
-              className="input"
-              type="search"
-              placeholder="Buscar ano, mes ou dia"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-          </div>
+          {searchable ? (
+            <div className="tree-search">
+              <Icon name="search" size={14} />
+              <input
+                className="input"
+                type="search"
+                placeholder={searchPlaceholder}
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            </div>
+          ) : null}
           <div className="tree-content">
             <label className="tree-node tree-select-all">
               <input

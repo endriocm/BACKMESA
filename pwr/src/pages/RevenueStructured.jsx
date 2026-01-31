@@ -4,17 +4,20 @@ import SyncPanel from '../components/SyncPanel'
 import DataTable from '../components/DataTable'
 import Icon from '../components/Icons'
 import { formatCurrency, formatDate } from '../utils/format'
+import { normalizeDateKey } from '../utils/dateKey'
 import { useToast } from '../hooks/useToast'
 import { useGlobalFilters } from '../contexts/GlobalFilterContext'
 import { enrichRow } from '../services/tags'
 import { buildMonthLabel, getMonthKey, loadStructuredRevenue, saveStructuredRevenue } from '../services/revenueStructured'
+import MultiSelect from '../components/MultiSelect'
+import TreeSelect from '../components/TreeSelect'
 
 const RevenueStructured = () => {
   const { notify } = useToast()
   const { selectedBroker, tagsIndex } = useGlobalFilters()
-  const [filters, setFilters] = useState({ search: '', cliente: '', assessor: '', ativo: '', estrutura: '' })
+  const [filters, setFilters] = useState({ search: '', cliente: '', assessor: '', ativo: '', estrutura: '', broker: [] })
   const [entries, setEntries] = useState(() => loadStructuredRevenue())
-  const [periodKey, setPeriodKey] = useState('')
+  const [selectedDays, setSelectedDays] = useState([])
   const [syncing, setSyncing] = useState(false)
   const [syncResult, setSyncResult] = useState(null)
   const [lastSyncAt, setLastSyncAt] = useState(() => {
@@ -34,41 +37,126 @@ const RevenueStructured = () => {
     }
   }, [])
 
+  const buildMultiOptions = (values) => {
+    const unique = Array.from(new Set(values.filter((value) => value != null && value !== '')))
+      .map((value) => String(value).trim())
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b, 'pt-BR'))
+    return unique.map((value) => ({ value, label: value }))
+  }
+
+  const buildDateTree = (items) => {
+    const years = new Map()
+    const allValues = new Set()
+    items.forEach((item) => {
+      const key = normalizeDateKey(item?.dataEntrada)
+      if (!key) return
+      allValues.add(key)
+      const [year, month] = key.split('-')
+      if (!years.has(year)) years.set(year, new Map())
+      const monthMap = years.get(year)
+      if (!monthMap.has(month)) monthMap.set(month, new Set())
+      monthMap.get(month).add(key)
+    })
+
+    const tree = Array.from(years.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([year, monthMap]) => {
+        const months = Array.from(monthMap.entries())
+          .sort((a, b) => a[0].localeCompare(b[0]))
+          .map(([month, daySet]) => {
+            const days = Array.from(daySet).sort()
+            const children = days.map((key) => ({
+              key,
+              label: key.split('-')[2],
+              value: key,
+              values: [key],
+            }))
+            return {
+              key: `${year}-${month}`,
+              label: buildMonthLabel(`${year}-${month}`),
+              children,
+              values: days,
+              count: days.length,
+            }
+          })
+        const values = months.flatMap((month) => month.values)
+        return {
+          key: year,
+          label: year,
+          children: months,
+          values,
+          count: values.length,
+        }
+      })
+
+    return { tree, allValues: Array.from(allValues).sort() }
+  }
+
+  const allDays = useMemo(
+    () => Array.from(new Set(entries.map((entry) => normalizeDateKey(entry.dataEntrada)))).filter(Boolean).sort(),
+    [entries],
+  )
+
   const monthOptions = useMemo(() => {
-    const keys = Array.from(new Set(entries.map((entry) => getMonthKey(entry.dataEntrada))))
+    const keys = Array.from(new Set(allDays.map((key) => getMonthKey(key))))
       .filter(Boolean)
       .sort()
     return keys.map((key) => ({ value: key, label: buildMonthLabel(key) }))
-  }, [entries])
+  }, [allDays])
 
   const resolvedPeriodKey = useMemo(() => {
-    if (periodKey) return periodKey
+    if (selectedDays.length) {
+      const months = Array.from(new Set(selectedDays.map((key) => getMonthKey(key))))
+      return months.length === 1 ? months[0] : 'multi'
+    }
     const sorted = monthOptions.map((item) => item.value).sort()
     return sorted[sorted.length - 1] || ''
-  }, [monthOptions, periodKey])
+  }, [monthOptions, selectedDays])
+
+  const defaultMonthDays = useMemo(() => {
+    if (!resolvedPeriodKey || resolvedPeriodKey === 'multi') return []
+    return allDays.filter((key) => getMonthKey(key) === resolvedPeriodKey)
+  }, [allDays, resolvedPeriodKey])
+
+  const effectiveDays = selectedDays.length ? selectedDays : defaultMonthDays
 
   const totalMes = useMemo(() => {
-    if (!resolvedPeriodKey) return 0
+    if (!effectiveDays.length) return 0
+    const set = new Set(effectiveDays)
     return entries
-      .filter((entry) => getMonthKey(entry.dataEntrada) === resolvedPeriodKey)
+      .filter((entry) => set.has(normalizeDateKey(entry.dataEntrada)))
       .reduce((sum, entry) => sum + (Number(entry.comissao) || 0), 0)
-  }, [entries, resolvedPeriodKey])
+  }, [effectiveDays, entries])
+
+  const enrichedEntries = useMemo(
+    () => entries.map((entry) => enrichRow(entry, tagsIndex)),
+    [entries, tagsIndex],
+  )
+
+  const brokerOptions = useMemo(
+    () => buildMultiOptions(enrichedEntries.map((entry) => entry.broker)),
+    [enrichedEntries],
+  )
+
+  const periodTree = useMemo(() => buildDateTree(enrichedEntries), [enrichedEntries])
 
   const rows = useMemo(() => {
-    return entries
-      .map((entry) => enrichRow(entry, tagsIndex))
+    const daySet = new Set(effectiveDays)
+    return enrichedEntries
       .filter((entry) => {
         const query = filters.search.toLowerCase()
         if (query && !`${entry.codigoCliente || ''} ${entry.nomeCliente || ''} ${entry.assessor || ''} ${entry.broker || ''} ${entry.ativo || ''} ${entry.estrutura || ''}`.toLowerCase().includes(query)) return false
         if (selectedBroker.length && !selectedBroker.includes(String(entry.broker || '').trim())) return false
+        if (filters.broker.length && !filters.broker.includes(String(entry.broker || '').trim())) return false
         if (filters.cliente && entry.codigoCliente !== filters.cliente) return false
         if (filters.assessor && entry.assessor !== filters.assessor) return false
         if (filters.ativo && entry.ativo !== filters.ativo) return false
         if (filters.estrutura && entry.estrutura !== filters.estrutura) return false
-        if (resolvedPeriodKey && getMonthKey(entry.dataEntrada) !== resolvedPeriodKey) return false
+        if (effectiveDays.length && !daySet.has(normalizeDateKey(entry.dataEntrada))) return false
         return true
       })
-  }, [entries, filters, resolvedPeriodKey, selectedBroker, tagsIndex])
+  }, [effectiveDays, enrichedEntries, filters, selectedBroker])
 
   const pageSize = 100
   const [page, setPage] = useState(1)
@@ -78,7 +166,7 @@ const RevenueStructured = () => {
 
   useEffect(() => {
     setPage(1)
-  }, [filters.search, filters.cliente, filters.assessor, filters.ativo, filters.estrutura, resolvedPeriodKey, selectedBroker, entries.length])
+  }, [filters.search, filters.cliente, filters.assessor, filters.ativo, filters.estrutura, filters.broker, selectedDays, selectedBroker, entries.length])
 
   useEffect(() => {
     if (page > totalPages) setPage(totalPages)
@@ -157,7 +245,12 @@ const RevenueStructured = () => {
       saveStructuredRevenue(nextEntries)
       const stats = payload.summary || payload.stats || {}
       const monthFromStats = stats.months?.[stats.months.length - 1] || ''
-      if (monthFromStats) setPeriodKey(monthFromStats)
+      if (monthFromStats) {
+        const nextDays = nextEntries
+          .map((entry) => normalizeDateKey(entry.dataEntrada))
+          .filter((key) => key && getMonthKey(key) === monthFromStats)
+        setSelectedDays(Array.from(new Set(nextDays)))
+      }
       const periodKeyResolved = monthFromStats || resolvedPeriodKey
       const periodEntries = periodKeyResolved
         ? nextEntries.filter((entry) => getMonthKey(entry.dataEntrada) === periodKeyResolved)
@@ -200,7 +293,7 @@ const RevenueStructured = () => {
         title="Receita Estruturadas"
         subtitle="Controle completo da importacao por pasta e consolidacao mensal."
         meta={[
-          { label: 'Periodo selecionado', value: resolvedPeriodKey ? buildMonthLabel(resolvedPeriodKey) : '?' },
+          { label: 'Periodo selecionado', value: resolvedPeriodKey === 'multi' ? 'Varios periodos' : (resolvedPeriodKey ? buildMonthLabel(resolvedPeriodKey) : '?') },
           { label: 'Entradas', value: rows.length },
           { label: 'Total do mes', value: formatCurrency(totalMes) },
           { label: 'Ultima sync', value: lastSyncAt || '?' },
@@ -236,8 +329,8 @@ const RevenueStructured = () => {
               className="btn btn-secondary"
               type="button"
               onClick={() => {
-                setFilters({ search: '', cliente: '', assessor: '', ativo: '', estrutura: '' })
-                setPeriodKey('')
+                setFilters({ search: '', cliente: '', assessor: '', ativo: '', estrutura: '', broker: [] })
+                setSelectedDays([])
                 notify('Filtros limpos com sucesso.', 'success')
               }}
             >
@@ -246,6 +339,12 @@ const RevenueStructured = () => {
           </div>
         </div>
         <div className="filter-grid">
+          <MultiSelect
+            value={filters.broker}
+            options={brokerOptions}
+            onChange={(value) => setFilters((prev) => ({ ...prev, broker: value }))}
+            placeholder="Broker"
+          />
           <input
             className="input"
             placeholder="Codigo cliente"
@@ -270,16 +369,14 @@ const RevenueStructured = () => {
             value={filters.estrutura}
             onChange={(event) => setFilters((prev) => ({ ...prev, estrutura: event.target.value }))}
           />
-          <select
-            className="input"
-            value={periodKey}
-            onChange={(event) => setPeriodKey(event.target.value)}
-          >
-            <option value="">Periodo</option>
-            {monthOptions.map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
-            ))}
-          </select>
+          <TreeSelect
+            value={selectedDays}
+            tree={periodTree.tree}
+            allValues={periodTree.allValues}
+            onChange={setSelectedDays}
+            placeholder="Periodo"
+            searchable={false}
+          />
         </div>
         <DataTable rows={pagedRows} columns={columns} emptyMessage="Sem entradas estruturadas." />
         <div className="table-footer">

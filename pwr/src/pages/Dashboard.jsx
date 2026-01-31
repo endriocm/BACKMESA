@@ -1,8 +1,13 @@
-﻿import Icon from '../components/Icons'
-import { dashboardKpis, dashboardMini, dashboardSegments, dashboardSeries } from '../data/dashboard'
+﻿import { useMemo, useState } from 'react'
 import { formatCurrency, formatNumber } from '../utils/format'
+import { normalizeDateKey } from '../utils/dateKey'
+import { loadStructuredRevenue } from '../services/revenueStructured'
+import { loadManualRevenue, loadRevenueByType } from '../services/revenueStore'
+import { enrichRow } from '../services/tags'
+import { useGlobalFilters } from '../contexts/GlobalFilterContext'
 
-const Sparkline = ({ data }) => {
+const Sparkline = ({ data, tone = 'currentColor' }) => {
+  if (!data.length) return null
   const max = Math.max(...data)
   const min = Math.min(...data)
   const range = max - min || 1
@@ -16,42 +21,164 @@ const Sparkline = ({ data }) => {
 
   return (
     <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="sparkline">
-      <polyline points={points} fill="none" stroke="currentColor" strokeWidth="2" />
+      <polyline points={points} fill="none" stroke={tone} strokeWidth="2" />
     </svg>
   )
 }
 
-const Trend = ({ delta }) => {
-  const up = delta >= 0
-  return (
-    <span className={`trend ${up ? 'up' : 'down'}`}>
-      <Icon name={up ? 'arrow-up' : 'arrow-down'} size={14} />
-      {Math.abs(delta * 100).toFixed(0)}%
-    </span>
-  )
+const getEntryDateKey = (entry) => {
+  const key = normalizeDateKey(entry?.dataEntrada || entry?.data || entry?.vencimento)
+  return key || ''
+}
+
+const getEntryValue = (entry) => {
+  const value = entry?.comissao ?? entry?.valor ?? entry?.value
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+const aggregateByKey = (entries, keyFn) => {
+  const map = new Map()
+  entries.forEach((entry) => {
+    const key = keyFn(entry)
+    if (!key) return
+    map.set(key, (map.get(key) || 0) + getEntryValue(entry))
+  })
+  return map
+}
+
+const collectUniqueClients = (entries) => {
+  const set = new Set()
+  entries.forEach((entry) => {
+    const code = entry?.codigoCliente ?? entry?.cliente ?? entry?.codigo ?? ''
+    const normalized = String(code || '').trim()
+    if (normalized) set.add(normalized)
+  })
+  return set
 }
 
 const Dashboard = () => {
+  const { tagsIndex } = useGlobalFilters()
+  const [granularity, setGranularity] = useState('monthly')
+  const [originFilter, setOriginFilter] = useState('all')
+
+  const structuredEntries = useMemo(() => {
+    const base = loadStructuredRevenue()
+    const manual = loadManualRevenue().filter((entry) => String(entry?.origem || '').toLowerCase() === 'estruturadas')
+    return [...base, ...manual]
+  }, [])
+  const bovespaEntries = useMemo(() => loadRevenueByType('Bovespa'), [])
+  const bmfEntries = useMemo(() => loadRevenueByType('BMF'), [])
+
+  const structuredEnriched = useMemo(
+    () => structuredEntries.map((entry) => enrichRow(entry, tagsIndex)),
+    [structuredEntries, tagsIndex],
+  )
+
+  const keyFn = useMemo(() => {
+    if (granularity === 'daily') return (entry) => getEntryDateKey(entry)
+    return (entry) => String(getEntryDateKey(entry)).slice(0, 7)
+  }, [granularity])
+
+  const structuredMap = useMemo(() => aggregateByKey(structuredEntries, keyFn), [structuredEntries, keyFn])
+  const bovespaMap = useMemo(() => aggregateByKey(bovespaEntries, keyFn), [bovespaEntries, keyFn])
+  const bmfMap = useMemo(() => aggregateByKey(bmfEntries, keyFn), [bmfEntries, keyFn])
+
+  const allKeys = useMemo(() => {
+    const keys = new Set([...structuredMap.keys(), ...bovespaMap.keys(), ...bmfMap.keys()])
+    return Array.from(keys).sort()
+  }, [structuredMap, bovespaMap, bmfMap])
+
+  const windowedKeys = useMemo(() => {
+    const max = granularity === 'daily' ? 21 : 12
+    return allKeys.slice(-max)
+  }, [allKeys, granularity])
+
+  const series = useMemo(() => {
+    return windowedKeys.map((key) => ({
+      key,
+      estruturadas: structuredMap.get(key) || 0,
+      bovespa: bovespaMap.get(key) || 0,
+      bmf: bmfMap.get(key) || 0,
+    }))
+  }, [windowedKeys, structuredMap, bovespaMap, bmfMap])
+
+  const totalsByOrigin = useMemo(() => {
+    return series.reduce(
+      (acc, item) => {
+        acc.estruturadas += item.estruturadas
+        acc.bovespa += item.bovespa
+        acc.bmf += item.bmf
+        return acc
+      },
+      { estruturadas: 0, bovespa: 0, bmf: 0 },
+    )
+  }, [series])
+
+  const totalOverall = totalsByOrigin.estruturadas + totalsByOrigin.bovespa + totalsByOrigin.bmf
+
+  const visibleTotals = useMemo(() => {
+    if (originFilter === 'bovespa') return totalsByOrigin.bovespa
+    if (originFilter === 'bmf') return totalsByOrigin.bmf
+    if (originFilter === 'estruturadas') return totalsByOrigin.estruturadas
+    return totalOverall
+  }, [originFilter, totalOverall, totalsByOrigin])
+
+  const uniqueBovespa = useMemo(() => collectUniqueClients(bovespaEntries), [bovespaEntries])
+  const uniqueEstruturadas = useMemo(() => collectUniqueClients(structuredEntries), [structuredEntries])
+
+  const uniqueByBroker = useMemo(() => {
+    const map = new Map()
+    structuredEnriched.forEach((entry) => {
+      const broker = String(entry?.broker || '').trim() || '—'
+      const code = String(entry?.codigoCliente || '').trim()
+      if (!code) return
+      if (!map.has(broker)) map.set(broker, new Set())
+      map.get(broker).add(code)
+    })
+    return Array.from(map.entries())
+      .map(([broker, set]) => ({ broker, count: set.size }))
+      .sort((a, b) => b.count - a.count)
+  }, [structuredEnriched])
+
+  const maxBrokerCount = uniqueByBroker.reduce((max, row) => Math.max(max, row.count), 1)
+
+  const totalSeries = series.map((item) => item.estruturadas + item.bovespa + item.bmf)
+  const estrutSeries = series.map((item) => item.estruturadas)
+  const bovespaSeries = series.map((item) => item.bovespa)
+  const bmfSeries = series.map((item) => item.bmf)
+  const maxTotal = Math.max(...totalSeries, 1)
+
   return (
     <div className="dashboard">
       <section className="kpi-grid">
-        {dashboardKpis.map((kpi) => (
-          <div key={kpi.id} className="card kpi-card">
-            <div className="kpi-label">{kpi.label}</div>
-            <div className="kpi-value">{formatCurrency(kpi.value)}</div>
-            <Trend delta={kpi.delta} />
-          </div>
-        ))}
+        <div className="card kpi-card">
+          <div className="kpi-label">Receita total</div>
+          <div className="kpi-value">{formatCurrency(visibleTotals)}</div>
+        </div>
+        <div className="card kpi-card">
+          <div className="kpi-label">Clientes unicos em Bovespa</div>
+          <div className="kpi-value">{formatNumber(uniqueBovespa.size)}</div>
+        </div>
+        <div className="card kpi-card">
+          <div className="kpi-label">Clientes unicos em Estruturas</div>
+          <div className="kpi-value">{formatNumber(uniqueEstruturadas.size)}</div>
+        </div>
       </section>
 
       <section className="mini-grid">
-        {dashboardMini.map((item) => (
-          <div key={item.id} className="card mini-card">
-            <div className="mini-label">{item.label}</div>
-            <div className="mini-value">{item.value}</div>
-            <span className="mini-change">{item.change}</span>
-          </div>
-        ))}
+        <div className="card mini-card">
+          <div className="mini-label">Bovespa</div>
+          <div className="mini-value">{formatCurrency(totalsByOrigin.bovespa)}</div>
+        </div>
+        <div className="card mini-card">
+          <div className="mini-label">BMF</div>
+          <div className="mini-value">{formatCurrency(totalsByOrigin.bmf)}</div>
+        </div>
+        <div className="card mini-card">
+          <div className="mini-label">Estruturadas</div>
+          <div className="mini-value">{formatCurrency(totalsByOrigin.estruturadas)}</div>
+        </div>
       </section>
 
       <section className="dashboard-bottom">
@@ -59,30 +186,40 @@ const Dashboard = () => {
           <div className="card-head">
             <div>
               <h3>Fluxo operacional</h3>
-              <p className="muted">Movimento diario consolidado</p>
+              <p className="muted">Movimento consolidado por periodo</p>
             </div>
-            <div className="pill">Ultimos 21 dias</div>
+            <div className="page-list">
+              <button
+                className={`page-number ${granularity === 'monthly' ? 'active' : ''}`}
+                type="button"
+                onClick={() => setGranularity('monthly')}
+              >
+                Mensal
+              </button>
+              <button
+                className={`page-number ${granularity === 'daily' ? 'active' : ''}`}
+                type="button"
+                onClick={() => setGranularity('daily')}
+              >
+                Diario
+              </button>
+            </div>
           </div>
           <div className="chart">
-            <Sparkline data={dashboardSeries} />
+            <Sparkline data={totalSeries} tone="rgba(255,255,255,0.6)" />
+            <Sparkline data={bovespaSeries} tone="rgba(40,242,230,0.85)" />
+            <Sparkline data={bmfSeries} tone="rgba(166,107,255,0.85)" />
+            <Sparkline data={estrutSeries} tone="rgba(255,180,84,0.85)" />
             <div className="chart-grid">
-              {dashboardSeries.map((value, index) => (
-                <div key={`${value}-${index}`} style={{ height: `${value}%` }} className="chart-bar" />
+              {totalSeries.map((value, index) => (
+                <div key={`${value}-${index}`} style={{ height: `${(value / maxTotal) * 100}%` }} className="chart-bar" />
               ))}
             </div>
           </div>
           <div className="chart-footer">
             <div>
-              <span className="muted">Media</span>
-              <strong>{formatNumber(4020)}</strong>
-            </div>
-            <div>
-              <span className="muted">Pico recente</span>
-              <strong>{formatNumber(6820)}</strong>
-            </div>
-            <div>
-              <span className="muted">Alertas</span>
-              <strong>{formatNumber(7)}</strong>
+              <span className="muted">Total</span>
+              <strong>{formatCurrency(totalOverall)}</strong>
             </div>
           </div>
         </div>
@@ -90,31 +227,82 @@ const Dashboard = () => {
         <div className="card segment-card">
           <div className="card-head">
             <h3>Distribuicao por origem</h3>
-            <span className="muted">Janeiro 2026</span>
+            <div className="page-list">
+              <button
+                className={`page-number ${originFilter === 'all' ? 'active' : ''}`}
+                type="button"
+                onClick={() => setOriginFilter('all')}
+              >
+                Todas
+              </button>
+              <button
+                className={`page-number ${originFilter === 'bovespa' ? 'active' : ''}`}
+                type="button"
+                onClick={() => setOriginFilter('bovespa')}
+              >
+                Bovespa
+              </button>
+              <button
+                className={`page-number ${originFilter === 'bmf' ? 'active' : ''}`}
+                type="button"
+                onClick={() => setOriginFilter('bmf')}
+              >
+                BMF
+              </button>
+              <button
+                className={`page-number ${originFilter === 'estruturadas' ? 'active' : ''}`}
+                type="button"
+                onClick={() => setOriginFilter('estruturadas')}
+              >
+                Estruturadas
+              </button>
+            </div>
           </div>
           <div className="segment-list">
-            {dashboardSegments.map((segment) => (
-              <div key={segment.label} className="segment-row">
-                <div className={`segment-dot ${segment.tone}`} />
-                <div className="segment-info">
-                  <strong>{segment.label}</strong>
-                  <span>{segment.value}% do volume</span>
+            {[
+              { label: 'Bovespa', value: totalsByOrigin.bovespa, tone: 'cyan' },
+              { label: 'BMF', value: totalsByOrigin.bmf, tone: 'violet' },
+              { label: 'Estruturadas', value: totalsByOrigin.estruturadas, tone: 'amber' },
+            ].map((segment) => {
+              const percent = totalOverall ? (segment.value / totalOverall) * 100 : 0
+              return (
+                <div key={segment.label} className="segment-row">
+                  <div className={`segment-dot ${segment.tone}`} />
+                  <div className="segment-info">
+                    <strong>{segment.label}</strong>
+                    <span>{percent.toFixed(1)}% do volume</span>
+                  </div>
+                  <div className="segment-bar">
+                    <span style={{ width: `${percent}%` }} className={segment.tone} />
+                  </div>
                 </div>
-                <div className="segment-bar">
-                  <span style={{ width: `${segment.value}%` }} className={segment.tone} />
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
           <div className="segment-total">
             <div>
               <span className="muted">Total consolidado</span>
-              <strong>{formatCurrency(12845000)}</strong>
+              <strong>{formatCurrency(totalOverall)}</strong>
             </div>
-            <button className="btn btn-secondary" type="button">
-              <Icon name="doc" size={16} />
-              Ver relatorio
-            </button>
+          </div>
+          <div className="segment-total">
+            <div>
+              <span className="muted">Distribuicao de CPFs por broker (Estruturas)</span>
+              <div className="segment-list">
+                {uniqueByBroker.map((item) => (
+                  <div key={item.broker} className="segment-row">
+                    <div className="segment-dot cyan" />
+                    <div className="segment-info">
+                      <strong>{item.broker}</strong>
+                      <span>{item.count} clientes unicos</span>
+                    </div>
+                    <div className="segment-bar">
+                      <span style={{ width: `${(item.count / maxBrokerCount) * 100}%` }} className="cyan" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </section>

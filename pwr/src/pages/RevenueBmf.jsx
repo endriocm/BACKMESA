@@ -4,18 +4,34 @@ import SyncPanel from '../components/SyncPanel'
 import DataTable from '../components/DataTable'
 import Badge from '../components/Badge'
 import Icon from '../components/Icons'
-import { receitaEntries, receitaResumo } from '../data/revenue'
 import { formatCurrency, formatDate } from '../utils/format'
+import { normalizeDateKey } from '../utils/dateKey'
 import { useGlobalFilters } from '../contexts/GlobalFilterContext'
 import { enrichRow } from '../services/tags'
+import { loadRevenueByType } from '../services/revenueStore'
+import { buildMonthLabel, getMonthKey } from '../services/revenueStructured'
 
 const RevenueBmf = () => {
   const { selectedBroker, tagsIndex } = useGlobalFilters()
   const [filters, setFilters] = useState({ search: '', ativo: '' })
+  const [entries] = useState(() => loadRevenueByType('BMF'))
+
+  const resolvedPeriodKey = useMemo(() => {
+    const keys = Array.from(new Set(entries.map((entry) => getMonthKey(normalizeDateKey(entry.dataEntrada || entry.data)))))
+      .filter(Boolean)
+      .sort()
+    return keys[keys.length - 1] || ''
+  }, [entries])
+
+  const totalMes = useMemo(() => {
+    if (!resolvedPeriodKey) return 0
+    return entries
+      .filter((entry) => getMonthKey(normalizeDateKey(entry.dataEntrada || entry.data)) === resolvedPeriodKey)
+      .reduce((sum, entry) => sum + (Number(entry.valor) || 0), 0)
+  }, [entries, resolvedPeriodKey])
 
   const rows = useMemo(() => {
-    return receitaEntries
-      .filter((entry) => entry.origem === 'BMF')
+    return entries
       .map((entry) => enrichRow(entry, tagsIndex))
       .filter((entry) => {
         const query = filters.search.toLowerCase()
@@ -24,7 +40,7 @@ const RevenueBmf = () => {
         if (filters.ativo && entry.ativo !== filters.ativo) return false
         return true
       })
-  }, [filters, selectedBroker, tagsIndex])
+  }, [entries, filters, selectedBroker, tagsIndex])
 
   const columns = useMemo(
     () => [
@@ -49,9 +65,9 @@ const RevenueBmf = () => {
         title="Receita BMF"
         subtitle="Monitoramento de contratos futuros e consolidacao automatica."
         meta={[
-          { label: 'Periodo selecionado', value: 'Jan 2026' },
-          { label: 'Ultima sync', value: receitaResumo.ultimaSync },
-          { label: 'Total do mes', value: formatCurrency(3120000) },
+          { label: 'Periodo selecionado', value: resolvedPeriodKey ? buildMonthLabel(resolvedPeriodKey) : '?' },
+          { label: 'Ultima sync', value: '?' },
+          { label: 'Total do mes', value: formatCurrency(totalMes) },
         ]}
         actions={[{ label: 'Importar', icon: 'upload' }, { label: 'Exportar', icon: 'download', variant: 'btn-secondary' }]}
       />
