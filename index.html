@@ -5,37 +5,43 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta
     name="description"
-    content="Resumo oficial da Ferramenta. Plataforma desktop para receita, operacao, vencimento, HubXP, Outlook, relatorios e automacoes."
+    content="Mesa Control. Plataforma desktop para receita, operacao, HubXP, Outlook, dashboards e materiais de saida."
   >
-  <meta name="theme-color" content="#08101a">
-  <title>Ferramenta | Resumo da Plataforma</title>
+  <meta name="theme-color" content="#070d16">
+  <title>Mesa Control | Plataforma da mesa</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Sora:wght@500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-0: #05070d;
-      --bg-1: #0a101b;
-      --bg-2: #101827;
-      --surface-0: rgba(18, 26, 40, 0.9);
-      --surface-1: rgba(19, 29, 45, 0.96);
-      --surface-2: rgba(25, 38, 59, 0.96);
-      --text-0: #f4f7fb;
-      --text-1: #cad5e7;
-      --text-2: #95a6c3;
-      --brand-0: #f1c40f;
-      --brand-1: #d4af37;
-      --accent: #38d5ff;
-      --accent-soft: rgba(56, 213, 255, 0.14);
-      --ok: #2ce0a7;
-      --danger: #ff6f87;
-      --border-soft: rgba(194, 210, 236, 0.18);
-      --shadow-lg: 0 32px 84px rgba(0, 0, 0, 0.42);
-      --shadow-md: 0 16px 40px rgba(0, 0, 0, 0.28);
-      --radius-xl: 26px;
-      --radius-lg: 20px;
-      --radius-md: 16px;
-      --container-w: 1200px;
+      --bg-0: #06080d;
+      --bg-1: #09111a;
+      --bg-2: #0f1c2c;
+      --bg-3: #15253a;
+      --surface-0: rgba(13, 20, 31, 0.88);
+      --surface-1: rgba(16, 25, 39, 0.94);
+      --surface-2: rgba(20, 32, 49, 0.96);
+      --surface-3: rgba(26, 41, 64, 0.98);
+      --text-0: #f5f8fd;
+      --text-1: #cfdbef;
+      --text-2: #8fa4c2;
+      --line: rgba(203, 218, 241, 0.14);
+      --line-strong: rgba(203, 218, 241, 0.24);
+      --accent: #56e3ff;
+      --accent-strong: #96f0ff;
+      --gold: #f5cf55;
+      --gold-strong: #ffdf7d;
+      --mint: #5df4c0;
+      --coral: #ff8f78;
+      --shadow-soft: 0 18px 42px rgba(0, 0, 0, 0.24);
+      --shadow-lg: 0 38px 90px rgba(0, 0, 0, 0.38);
+      --radius-xl: 30px;
+      --radius-lg: 24px;
+      --radius-md: 18px;
+      --radius-sm: 14px;
+      --container-w: 1240px;
+      --hero-spot-x: 72%;
+      --hero-spot-y: 24%;
     }
 
     * {
@@ -50,14 +56,15 @@
       margin: 0;
       min-height: 100vh;
       background:
-        radial-gradient(1200px 620px at 8% -2%, rgba(56, 213, 255, 0.16), transparent 62%),
-        radial-gradient(900px 520px at 92% 8%, rgba(241, 196, 15, 0.16), transparent 68%),
-        linear-gradient(180deg, #0a1019 0%, #060910 58%, #04060a 100%);
+        radial-gradient(1200px 720px at 8% -4%, rgba(86, 227, 255, 0.15), transparent 60%),
+        radial-gradient(900px 560px at 92% 10%, rgba(245, 207, 85, 0.14), transparent 62%),
+        linear-gradient(180deg, #0a1018 0%, #060910 44%, #04060a 100%);
       color: var(--text-0);
-      font-family: "Manrope", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      font-family: "Outfit", sans-serif;
       line-height: 1.58;
       -webkit-font-smoothing: antialiased;
       text-rendering: optimizeLegibility;
+      overflow-x: hidden;
     }
 
     img {
@@ -70,26 +77,69 @@
       text-decoration: none;
     }
 
-    .page-glow {
+    button {
+      font: inherit;
+    }
+
+    .ambient {
       position: fixed;
-      z-index: -1;
+      inset: auto;
+      z-index: -3;
       pointer-events: none;
+      filter: blur(90px);
+      opacity: 0.42;
+      animation: drift 16s ease-in-out infinite alternate;
+    }
+
+    .ambient-a {
+      top: 82px;
+      left: -140px;
+      width: 360px;
+      height: 360px;
+      background: radial-gradient(circle, rgba(86, 227, 255, 0.56) 0%, rgba(86, 227, 255, 0.04) 72%);
+    }
+
+    .ambient-b {
+      right: -180px;
+      top: 240px;
       width: 420px;
       height: 420px;
-      filter: blur(86px);
+      background: radial-gradient(circle, rgba(245, 207, 85, 0.42) 0%, rgba(245, 207, 85, 0.04) 72%);
+      animation-duration: 18s;
+    }
+
+    .ambient-c {
+      left: 28%;
+      bottom: -160px;
+      width: 460px;
+      height: 460px;
+      background: radial-gradient(circle, rgba(93, 244, 192, 0.26) 0%, rgba(93, 244, 192, 0.02) 70%);
+      animation-duration: 20s;
+    }
+
+    .grid-plane,
+    .noise-plane {
+      position: fixed;
+      inset: 0;
+      z-index: -4;
+      pointer-events: none;
+    }
+
+    .grid-plane {
+      background:
+        linear-gradient(rgba(113, 146, 196, 0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(113, 146, 196, 0.06) 1px, transparent 1px);
+      background-size: 56px 56px;
+      mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.8), transparent 88%);
       opacity: 0.36;
     }
 
-    .page-glow-left {
-      top: 120px;
-      left: -140px;
-      background: radial-gradient(circle, rgba(56, 213, 255, 0.42) 0%, rgba(56, 213, 255, 0.04) 74%);
-    }
-
-    .page-glow-right {
-      right: -180px;
-      bottom: 160px;
-      background: radial-gradient(circle, rgba(241, 196, 15, 0.38) 0%, rgba(212, 175, 55, 0.04) 72%);
+    .noise-plane {
+      background-image:
+        radial-gradient(rgba(255, 255, 255, 0.06) 0.6px, transparent 0.6px);
+      background-size: 10px 10px;
+      opacity: 0.07;
+      mix-blend-mode: soft-light;
     }
 
     .container {
@@ -98,93 +148,130 @@
     }
 
     .card {
+      position: relative;
+      overflow: hidden;
       background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 46%),
-        linear-gradient(180deg, rgba(17, 25, 39, 0.9), rgba(11, 17, 27, 0.96));
-      border: 1px solid rgba(196, 212, 237, 0.17);
+        linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 44%),
+        linear-gradient(180deg, rgba(17, 27, 41, 0.9), rgba(10, 15, 24, 0.98));
+      border: 1px solid var(--line);
       border-radius: var(--radius-lg);
-      box-shadow: var(--shadow-md);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(120deg, transparent 0%, transparent 42%, rgba(255, 255, 255, 0.12) 50%, transparent 58%, transparent 100%);
+      transform: translateX(-120%);
+      transition: transform 0.9s ease;
+    }
+
+    .card:hover::before {
+      transform: translateX(120%);
     }
 
     .site-header {
       position: sticky;
       top: 0;
-      z-index: 40;
-      backdrop-filter: blur(14px);
-      background: linear-gradient(180deg, rgba(7, 11, 18, 0.92), rgba(7, 11, 18, 0.7));
-      border-bottom: 1px solid rgba(184, 197, 222, 0.13);
+      z-index: 50;
+      backdrop-filter: blur(16px);
+      background: linear-gradient(180deg, rgba(7, 12, 19, 0.92), rgba(7, 12, 19, 0.72));
+      border-bottom: 1px solid rgba(184, 198, 225, 0.12);
+    }
+
+    .scroll-progress {
+      height: 3px;
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .scroll-progress-bar {
+      display: block;
+      width: 0;
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--gold), var(--coral));
+      box-shadow: 0 0 18px rgba(86, 227, 255, 0.42);
+      transition: width 0.16s linear;
     }
 
     .nav-wrap {
-      min-height: 74px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 18px;
+      min-height: 78px;
+      padding: 0 0 2px;
     }
 
     .brand {
       display: inline-flex;
       align-items: center;
-      gap: 10px;
-      font-family: "Space Grotesk", "Manrope", sans-serif;
-      letter-spacing: 0.02em;
+      gap: 12px;
+      white-space: nowrap;
     }
 
-    .brand-dot {
-      width: 11px;
-      height: 11px;
+    .brand-mark {
+      position: relative;
+      width: 14px;
+      height: 14px;
       border-radius: 999px;
-      background: linear-gradient(135deg, var(--brand-0), var(--brand-1));
-      box-shadow: 0 0 16px rgba(241, 196, 15, 0.5);
+      background: linear-gradient(135deg, var(--accent), var(--mint));
+      box-shadow: 0 0 18px rgba(86, 227, 255, 0.52);
     }
 
-    .brand-name {
+    .brand-mark::after {
+      content: "";
+      position: absolute;
+      inset: -8px;
+      border-radius: 999px;
+      border: 1px solid rgba(86, 227, 255, 0.16);
+    }
+
+    .brand-text {
+      display: grid;
+      gap: 2px;
+    }
+
+    .brand-title {
+      font-family: "Sora", sans-serif;
       font-size: 1.02rem;
       font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .brand-subtitle {
+      color: var(--text-2);
+      font-size: 0.72rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
     }
 
     .site-nav {
       display: inline-flex;
       align-items: center;
       gap: 18px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(199, 213, 235, 0.1);
+      background: rgba(155, 175, 210, 0.04);
     }
 
     .site-nav a {
       position: relative;
-      padding: 4px 2px;
-      font-size: 0.92rem;
-      color: var(--text-1);
-      transition: color 0.2s ease;
-    }
-
-    .site-nav a:hover {
-      color: var(--text-0);
-    }
-
-    .site-nav a::after {
-      content: "";
-      position: absolute;
-      left: 0;
-      right: 0;
-      bottom: -8px;
-      height: 2px;
+      padding: 6px 10px;
       border-radius: 999px;
-      background: linear-gradient(90deg, rgba(56, 213, 255, 0.08), rgba(56, 213, 255, 0.75), rgba(56, 213, 255, 0.08));
-      opacity: 0;
-      transform: scaleX(0.4);
-      transition: opacity 0.2s ease, transform 0.2s ease;
+      color: var(--text-1);
+      font-size: 0.92rem;
+      transition: color 0.2s ease, background-color 0.2s ease;
     }
 
-    .site-nav a.is-active::after,
-    .site-nav a:hover::after {
-      opacity: 1;
-      transform: scaleX(1);
-    }
-
+    .site-nav a:hover,
     .site-nav a.is-active {
-      color: #83ebff;
-      text-shadow: 0 0 12px rgba(56, 213, 255, 0.35);
+      color: var(--text-0);
+      background: rgba(86, 227, 255, 0.08);
     }
 
     .btn {
@@ -192,13 +279,13 @@
       align-items: center;
       justify-content: center;
       gap: 8px;
-      border: 0;
+      border: 1px solid transparent;
       border-radius: 999px;
-      padding: 0.76rem 1.18rem;
-      font-weight: 700;
-      font-size: 0.94rem;
+      padding: 0.82rem 1.24rem;
+      font-weight: 600;
+      font-size: 0.95rem;
       cursor: pointer;
-      transition: transform 0.22s ease, box-shadow 0.22s ease, background-color 0.22s ease;
+      transition: transform 0.22s ease, box-shadow 0.22s ease, background-color 0.22s ease, border-color 0.22s ease;
     }
 
     .btn:hover {
@@ -211,520 +298,765 @@
     }
 
     .btn-primary {
-      color: #11161f;
-      background: linear-gradient(135deg, var(--brand-0), var(--brand-1));
-      box-shadow: 0 14px 36px rgba(212, 175, 55, 0.26);
+      color: #0d1118;
+      background: linear-gradient(135deg, var(--gold), #fff1a8);
+      box-shadow: 0 18px 40px rgba(245, 207, 85, 0.25);
     }
 
     .btn-secondary {
       color: var(--text-0);
-      background: linear-gradient(180deg, #152339, #121a2b);
-      border: 1px solid var(--border-soft);
+      background: linear-gradient(180deg, rgba(20, 32, 49, 0.92), rgba(14, 22, 34, 0.98));
+      border-color: var(--line-strong);
     }
 
     .btn-ghost {
       color: var(--text-0);
-      background: rgba(173, 189, 214, 0.08);
-      border: 1px solid rgba(196, 212, 237, 0.24);
+      background: rgba(171, 190, 218, 0.08);
+      border-color: rgba(199, 213, 235, 0.18);
     }
 
     .btn-xl {
-      padding: 0.96rem 1.46rem;
+      padding: 1rem 1.52rem;
       font-size: 1rem;
     }
 
     .hero {
-      padding: 88px 0 44px;
+      position: relative;
+      padding: 46px 0 28px;
     }
 
     .hero-grid {
       display: grid;
-      grid-template-columns: 1.08fr 0.92fr;
+      grid-template-columns: 0.98fr 1.02fr;
+      gap: 30px;
       align-items: center;
-      gap: 34px;
+    }
+
+    .hero-copy {
+      padding: 34px 0;
+      max-width: 640px;
     }
 
     .eyebrow {
-      margin: 0 0 10px;
-      color: var(--accent);
-      text-transform: uppercase;
-      letter-spacing: 0.11em;
-      font-size: 0.73rem;
+      margin: 0 0 14px;
+      color: var(--accent-strong);
+      font-size: 0.76rem;
       font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
     }
 
     h1,
     h2,
     h3 {
-      font-family: "Space Grotesk", "Manrope", sans-serif;
-      letter-spacing: -0.016em;
+      margin: 0;
+      font-family: "Sora", sans-serif;
+      letter-spacing: -0.04em;
     }
 
     .hero h1 {
-      margin: 0;
-      font-size: clamp(2.2rem, 4.5vw, 3.9rem);
-      line-height: 1.06;
+      font-size: clamp(2.8rem, 6vw, 5.6rem);
+      line-height: 0.96;
+      max-width: 11ch;
     }
 
-    .marker {
-      position: relative;
+    .hero h1 .headline-glow {
       display: inline-block;
-      z-index: 1;
+      color: var(--gold-strong);
+      text-shadow: 0 0 32px rgba(245, 207, 85, 0.18);
     }
 
-    .marker::after {
-      content: "";
-      position: absolute;
-      left: -3px;
-      right: -3px;
-      bottom: 0.08em;
-      z-index: -1;
-      height: 0.32em;
-      border-radius: 6px;
-      background: linear-gradient(90deg, rgba(241, 196, 15, 0.42), rgba(212, 175, 55, 0.18));
-    }
-
-    .hero-text {
-      margin: 16px 0 0;
+    .hero-lead {
+      margin: 18px 0 0;
+      max-width: 60ch;
       color: var(--text-1);
       font-size: 1.05rem;
-      max-width: 62ch;
     }
 
     .hero-actions {
-      margin-top: 26px;
       display: flex;
       flex-wrap: wrap;
       gap: 12px;
+      margin-top: 28px;
     }
 
-    .hero-meta {
-      margin-top: 16px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      align-items: center;
-      color: var(--text-2);
-      font-size: 0.9rem;
-    }
-
-    .dot-sep {
-      color: rgba(151, 167, 193, 0.74);
-    }
-
-    .hero-chip-row {
-      margin-top: 24px;
+    .hero-proof {
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
+      margin-top: 24px;
     }
 
-    .hero-chip {
+    .proof-chip {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      padding: 8px 14px;
+      gap: 10px;
+      padding: 9px 14px;
       border-radius: 999px;
-      border: 1px solid rgba(186, 204, 232, 0.22);
-      background: rgba(151, 181, 220, 0.08);
-      color: #e7eef9;
+      border: 1px solid rgba(201, 215, 239, 0.16);
+      background: rgba(151, 176, 214, 0.08);
+      color: var(--text-0);
       font-size: 0.84rem;
       letter-spacing: 0.01em;
     }
 
-    .hero-chip::before {
+    .proof-chip::before {
       content: "";
-      width: 7px;
-      height: 7px;
+      width: 8px;
+      height: 8px;
       border-radius: 999px;
-      background: linear-gradient(135deg, var(--accent), var(--ok));
-      box-shadow: 0 0 0 3px rgba(56, 213, 255, 0.14);
+      background: linear-gradient(135deg, var(--accent), var(--mint));
+      box-shadow: 0 0 0 3px rgba(86, 227, 255, 0.14);
     }
 
-    .hero-media {
-      position: relative;
-      overflow: hidden;
-      border-radius: var(--radius-xl);
-      padding: 14px;
-      background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 42%),
-        linear-gradient(180deg, rgba(16, 24, 38, 0.96), rgba(11, 17, 27, 0.98));
-    }
-
-    .hero-media img {
-      width: 100%;
-      border-radius: 18px;
-      border: 1px solid rgba(194, 210, 236, 0.12);
-    }
-
-    .hero-callout {
-      position: absolute;
-      right: 28px;
-      bottom: 28px;
-      width: min(270px, calc(100% - 56px));
-      padding: 16px 18px;
-      border-radius: 18px;
-      border: 1px solid rgba(185, 205, 235, 0.18);
-      background: rgba(8, 14, 22, 0.84);
-      backdrop-filter: blur(10px);
-      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.26);
-    }
-
-    .hero-callout p {
-      margin: 0;
-      color: var(--text-1);
-      font-size: 0.92rem;
-    }
-
-    .hero-callout strong {
-      display: block;
-      margin-bottom: 6px;
-      color: var(--text-0);
-      font-size: 0.98rem;
-    }
-
-    .metrics {
-      padding: 18px 0 46px;
-    }
-
-    .metric-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 16px;
-    }
-
-    .metric {
-      padding: 20px 20px 18px;
-    }
-
-    .metric-value {
-      margin: 0;
-      font-size: 2.38rem;
-      line-height: 1;
-      font-weight: 800;
-      color: var(--brand-0);
-    }
-
-    .metric-label {
-      margin: 7px 0 6px;
-      font-weight: 700;
-      color: var(--text-0);
-    }
-
-    .metric-note {
-      margin: 0;
+    .hero-note {
+      margin: 18px 0 0;
       color: var(--text-2);
       font-size: 0.9rem;
     }
 
-    .section-block {
-      padding: 52px 0;
-    }
-
-    .section-head {
-      max-width: 76ch;
-    }
-
-    .section-head h2 {
-      margin: 0;
-      font-size: clamp(1.64rem, 3vw, 2.56rem);
-      line-height: 1.12;
-    }
-
-    .section-head p {
-      margin: 12px 0 0;
-      color: var(--text-1);
-    }
-
-    .summary-grid {
-      margin-top: 22px;
-      display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: 16px;
-    }
-
-    .summary-card {
-      padding: 20px 18px;
-      background:
-        linear-gradient(180deg, rgba(56, 213, 255, 0.07), transparent 44%),
-        linear-gradient(180deg, rgba(18, 26, 40, 0.94), rgba(10, 16, 25, 0.98));
-    }
-
-    .summary-card h3 {
-      margin: 0 0 10px;
-      font-size: 1.05rem;
-    }
-
-    .summary-card p {
-      margin: 0;
-      color: var(--text-1);
-      font-size: 0.93rem;
-    }
-
-    .section-features {
-      padding-top: 18px;
-    }
-
-    .feature-list {
-      display: grid;
-      gap: 24px;
-    }
-
-    .feature-row {
+    .hero-visual {
       position: relative;
-      overflow: hidden;
-      display: grid;
-      grid-template-columns: 1.03fr 0.97fr;
-      gap: 0;
-      align-items: stretch;
     }
 
-    .feature-row::before {
+    .hero-stage {
+      position: relative;
+      min-height: 670px;
+      padding: 26px;
+      border-radius: 34px;
+      border: 1px solid rgba(208, 221, 243, 0.14);
+      background:
+        radial-gradient(480px circle at var(--hero-spot-x) var(--hero-spot-y), rgba(86, 227, 255, 0.18), transparent 58%),
+        radial-gradient(340px circle at 18% 82%, rgba(245, 207, 85, 0.14), transparent 60%),
+        linear-gradient(180deg, rgba(19, 29, 45, 0.92), rgba(10, 15, 24, 0.98));
+      box-shadow: var(--shadow-lg);
+      transform-style: preserve-3d;
+      isolation: isolate;
+    }
+
+    .hero-stage::after {
       content: "";
       position: absolute;
-      inset: 0;
-      background:
-        radial-gradient(520px 260px at 12% 20%, rgba(56, 213, 255, 0.08), transparent 70%),
-        radial-gradient(500px 260px at 88% 82%, rgba(241, 196, 15, 0.08), transparent 72%);
+      inset: 18px;
+      border-radius: 26px;
+      border: 1px solid rgba(255, 255, 255, 0.04);
       pointer-events: none;
     }
 
-    .feature-row > * {
-      position: relative;
-      z-index: 1;
-    }
-
-    .feature-row.reverse {
-      grid-template-columns: 0.97fr 1.03fr;
-    }
-
-    .feature-row.reverse .feature-media {
-      order: 2;
-    }
-
-    .feature-row.reverse .feature-copy {
-      order: 1;
-    }
-
-    .feature-media {
-      min-height: 100%;
-      overflow: hidden;
-      border-right: 1px solid rgba(184, 204, 231, 0.1);
-      background: #101824;
-    }
-
-    .feature-media img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .feature-copy {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      padding: clamp(22px, 2.5vw, 34px);
-      background:
-        linear-gradient(180deg, rgba(16, 24, 37, 0.78), rgba(10, 15, 24, 0.92)),
-        linear-gradient(140deg, rgba(56, 213, 255, 0.04), rgba(241, 196, 15, 0.06));
-    }
-
-    .feature-copy h3 {
-      margin: 0;
-      font-size: clamp(1.34rem, 2.2vw, 1.8rem);
-      line-height: 1.16;
-    }
-
-    .feature-copy p {
-      margin: 0;
-      color: var(--text-1);
-    }
-
-    .feature-points,
-    .module-points,
-    .check-list,
-    .install-steps {
-      margin: 6px 0 0;
-      padding: 0;
-      list-style: none;
-      display: grid;
-      gap: 9px;
-    }
-
-    .feature-points li,
-    .module-points li,
-    .check-list li,
-    .install-steps li {
-      position: relative;
-      padding-left: 18px;
-      color: var(--text-1);
-      font-size: 0.94rem;
-      line-height: 1.44;
-    }
-
-    .feature-points li::before,
-    .module-points li::before,
-    .check-list li::before,
-    .install-steps li::before {
-      content: "";
+    .hero-device {
       position: absolute;
-      left: 0;
-      top: 0.56em;
+      top: 52px;
+      right: 48px;
+      width: min(78%, 640px);
+      border-radius: 28px;
+      transform: translateZ(28px);
+      box-shadow: 0 36px 80px rgba(0, 0, 0, 0.36);
+      overflow: hidden;
+      border: 1px solid rgba(212, 224, 245, 0.16);
+    }
+
+    .hero-device img {
+      width: 100%;
+      background: #0b1220;
+    }
+
+    .float-panel {
+      position: absolute;
+      width: min(260px, 42%);
+      padding: 18px 18px 16px;
+      border-radius: 20px;
+      border: 1px solid rgba(214, 226, 246, 0.14);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 40%),
+        linear-gradient(180deg, rgba(13, 20, 31, 0.9), rgba(10, 15, 24, 0.96));
+      box-shadow: 0 22px 46px rgba(0, 0, 0, 0.24);
+      backdrop-filter: blur(10px);
+      transform: translateZ(44px);
+    }
+
+    .float-panel small {
+      display: block;
+      color: var(--accent-strong);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .float-panel h3 {
+      margin-top: 8px;
+      font-size: 1.04rem;
+      line-height: 1.18;
+    }
+
+    .float-panel p {
+      margin: 10px 0 0;
+      color: var(--text-1);
+      font-size: 0.9rem;
+      line-height: 1.45;
+    }
+
+    .panel-a {
+      top: 54px;
+      left: 24px;
+      animation: floatA 8s ease-in-out infinite;
+    }
+
+    .panel-b {
+      right: 14px;
+      bottom: 136px;
+      animation: floatB 9s ease-in-out infinite;
+    }
+
+    .panel-c {
+      left: 86px;
+      bottom: 28px;
+      width: min(320px, 48%);
+      animation: floatC 10s ease-in-out infinite;
+    }
+
+    .panel-stat-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .panel-stat {
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(162, 184, 216, 0.08);
+      border: 1px solid rgba(203, 218, 241, 0.08);
+    }
+
+    .panel-stat strong {
+      display: block;
+      font-family: "Sora", sans-serif;
+      font-size: 1rem;
+    }
+
+    .panel-stat span {
+      color: var(--text-2);
+      font-size: 0.8rem;
+    }
+
+    .signal-strip {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 26px;
+    }
+
+    .signal-card {
+      padding: 18px 18px 16px;
+      border-radius: 22px;
+      border: 1px solid rgba(201, 215, 239, 0.12);
+      background:
+        linear-gradient(180deg, rgba(86, 227, 255, 0.06), transparent 48%),
+        linear-gradient(180deg, rgba(14, 22, 34, 0.92), rgba(8, 13, 21, 0.98));
+      box-shadow: 0 16px 32px rgba(0, 0, 0, 0.18);
+    }
+
+    .signal-card strong {
+      display: block;
+      font-size: 0.96rem;
+      letter-spacing: 0.02em;
+    }
+
+    .signal-card span {
+      display: block;
+      margin-top: 6px;
+      color: var(--text-2);
+      font-size: 0.86rem;
+    }
+
+    .section {
+      position: relative;
+      padding: 76px 0;
+    }
+
+    .section-head {
+      max-width: 820px;
+      margin-bottom: 28px;
+    }
+
+    .section-head h2 {
+      font-size: clamp(2rem, 3.8vw, 3.4rem);
+      line-height: 1.02;
+    }
+
+    .section-head p {
+      margin: 14px 0 0;
+      max-width: 62ch;
+      color: var(--text-1);
+      font-size: 1rem;
+    }
+
+    .bento-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 0.9fr 0.9fr;
+      gap: 16px;
+    }
+
+    .bento-card {
+      padding: 24px;
+      min-height: 220px;
+    }
+
+    .bento-main {
+      grid-column: span 2;
+      min-height: 300px;
+      background:
+        radial-gradient(460px circle at 100% 0%, rgba(245, 207, 85, 0.14), transparent 54%),
+        linear-gradient(180deg, rgba(20, 31, 48, 0.92), rgba(10, 15, 24, 0.98));
+    }
+
+    .bento-tall {
+      grid-row: span 2;
+      min-height: 456px;
+      background:
+        radial-gradient(400px circle at 50% 0%, rgba(86, 227, 255, 0.16), transparent 52%),
+        linear-gradient(180deg, rgba(17, 27, 41, 0.94), rgba(8, 13, 21, 0.98));
+    }
+
+    .bento-card small {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--accent-strong);
+      font-size: 0.74rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .bento-card small::before {
+      content: "";
       width: 8px;
       height: 8px;
       border-radius: 999px;
-      background: linear-gradient(135deg, #3adeff, #16c685);
-      box-shadow: 0 0 0 3px rgba(58, 222, 255, 0.12);
+      background: linear-gradient(135deg, var(--gold), var(--accent));
     }
 
-    .feature-tags {
+    .bento-card h3 {
+      margin-top: 14px;
+      font-size: clamp(1.28rem, 2vw, 1.9rem);
+      line-height: 1.08;
+      max-width: 14ch;
+    }
+
+    .bento-card p {
+      margin: 12px 0 0;
+      color: var(--text-1);
+      max-width: 44ch;
+    }
+
+    .metric-pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .metric-pill {
+      padding: 9px 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(203, 218, 241, 0.12);
+      font-size: 0.84rem;
+      color: var(--text-0);
+    }
+
+    .bento-rail {
+      margin-top: 18px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .bento-rail-item {
+      padding: 14px 14px 12px;
+      border-radius: 16px;
+      background: rgba(164, 186, 219, 0.07);
+      border: 1px solid rgba(203, 218, 241, 0.08);
+    }
+
+    .bento-rail-item strong {
+      display: block;
+      font-size: 0.96rem;
+    }
+
+    .bento-rail-item span {
+      display: block;
+      margin-top: 6px;
+      color: var(--text-2);
+      font-size: 0.84rem;
+    }
+
+    .section-platform {
+      padding-top: 58px;
+    }
+
+    .platform-shell {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 18px;
+      padding: 18px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 38%),
+        linear-gradient(180deg, rgba(15, 23, 36, 0.94), rgba(8, 13, 21, 0.98));
+    }
+
+    .platform-menu {
+      display: grid;
+      gap: 10px;
+      align-content: start;
+    }
+
+    .module-trigger {
+      width: 100%;
+      text-align: left;
+      padding: 18px;
+      border-radius: 20px;
+      border: 1px solid rgba(203, 218, 241, 0.1);
+      background:
+        linear-gradient(180deg, rgba(23, 35, 54, 0.82), rgba(12, 18, 28, 0.96));
+      color: var(--text-1);
+      cursor: pointer;
+      transition: transform 0.22s ease, border-color 0.22s ease, background-color 0.22s ease, box-shadow 0.22s ease;
+    }
+
+    .module-trigger:hover,
+    .module-trigger.is-active {
+      transform: translateX(4px);
+      color: var(--text-0);
+      border-color: rgba(86, 227, 255, 0.28);
+      background:
+        radial-gradient(220px circle at 0% 50%, rgba(86, 227, 255, 0.12), transparent 60%),
+        linear-gradient(180deg, rgba(21, 33, 49, 0.92), rgba(11, 17, 26, 0.98));
+      box-shadow: 0 16px 32px rgba(0, 0, 0, 0.18);
+    }
+
+    .module-trigger small {
+      display: block;
+      color: var(--accent-strong);
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .module-trigger strong {
+      display: block;
       margin-top: 8px;
+      font-size: 1rem;
+    }
+
+    .module-trigger span {
+      display: block;
+      margin-top: 8px;
+      color: var(--text-2);
+      font-size: 0.88rem;
+      line-height: 1.45;
+    }
+
+    .platform-stage {
+      position: relative;
+      min-height: 540px;
+      border-radius: 28px;
+      background:
+        linear-gradient(180deg, rgba(22, 34, 52, 0.76), rgba(10, 15, 24, 0.92));
+      border: 1px solid rgba(203, 218, 241, 0.08);
+      overflow: hidden;
+    }
+
+    .module-panel {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      grid-template-columns: 0.95fr 1.05fr;
+      gap: 0;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(18px);
+      transition: opacity 0.34s ease, transform 0.34s ease;
+    }
+
+    .module-panel.is-active {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+
+    .module-copy {
+      padding: 30px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 14px;
+      background:
+        radial-gradient(320px circle at 0% 0%, rgba(86, 227, 255, 0.08), transparent 58%),
+        linear-gradient(180deg, rgba(16, 25, 39, 0.84), rgba(8, 13, 21, 0.98));
+    }
+
+    .module-copy small {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--gold-strong);
+      font-size: 0.74rem;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    .module-copy small::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--gold), var(--coral));
+    }
+
+    .module-copy h3 {
+      font-size: clamp(1.62rem, 2.6vw, 2.5rem);
+      line-height: 1.04;
+      max-width: 12ch;
+    }
+
+    .module-copy p {
+      margin: 0;
+      max-width: 46ch;
+      color: var(--text-1);
+      font-size: 0.98rem;
+    }
+
+    .module-points {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 10px;
+    }
+
+    .module-points li {
+      position: relative;
+      padding-left: 18px;
+      color: var(--text-1);
+      font-size: 0.92rem;
+    }
+
+    .module-points li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0.62em;
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--accent), var(--mint));
+      box-shadow: 0 0 0 3px rgba(86, 227, 255, 0.12);
+    }
+
+    .module-tag-row {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
     }
 
-    .feature-tag {
-      display: inline-flex;
-      align-items: center;
-      padding: 5px 11px;
+    .module-tag {
+      padding: 6px 10px;
       border-radius: 999px;
-      border: 1px solid rgba(178, 198, 224, 0.26);
-      background: rgba(157, 182, 217, 0.1);
-      color: #e4edf9;
-      font-size: 0.78rem;
-      letter-spacing: 0.02em;
+      border: 1px solid rgba(203, 218, 241, 0.14);
+      background: rgba(203, 218, 241, 0.05);
+      color: var(--text-0);
+      font-size: 0.8rem;
     }
 
-    .capability-cluster {
-      margin-top: 12px;
-      display: grid;
-      gap: 20px;
-    }
-
-    .module-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 16px;
-    }
-
-    .module-card {
-      padding: 20px 20px 18px;
+    .module-media {
+      position: relative;
+      padding: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 34%),
-        linear-gradient(180deg, rgba(17, 25, 39, 0.92), rgba(10, 15, 23, 0.98));
+        radial-gradient(420px circle at 50% 20%, rgba(245, 207, 85, 0.1), transparent 56%),
+        linear-gradient(180deg, rgba(12, 19, 30, 0.9), rgba(10, 15, 24, 0.98));
     }
 
-    .module-card h3 {
-      margin: 0 0 10px;
-      font-size: 1.08rem;
+    .module-media img {
+      width: 100%;
+      max-width: 640px;
+      border-radius: 24px;
+      border: 1px solid rgba(203, 218, 241, 0.12);
+      box-shadow: 0 24px 54px rgba(0, 0, 0, 0.3);
     }
 
-    .module-card p {
-      margin: 0;
-      color: var(--text-1);
+    .media-glass {
+      position: absolute;
+      right: 34px;
+      bottom: 28px;
+      width: 200px;
+      padding: 14px 14px 12px;
+      border-radius: 18px;
+      border: 1px solid rgba(203, 218, 241, 0.12);
+      background: rgba(9, 14, 22, 0.84);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 16px 34px rgba(0, 0, 0, 0.24);
     }
 
-    .flow-grid {
-      margin-top: 22px;
+    .media-glass strong {
+      display: block;
+      font-size: 0.94rem;
+    }
+
+    .media-glass span {
+      display: block;
+      margin-top: 6px;
+      color: var(--text-2);
+      font-size: 0.82rem;
+    }
+
+    .section-flow {
+      padding-top: 70px;
+    }
+
+    .timeline {
+      position: relative;
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      grid-template-columns: repeat(5, minmax(0, 1fr));
       gap: 16px;
+      align-items: start;
+      margin-top: 28px;
     }
 
-    .flow-step {
-      padding: 20px 18px 18px;
+    .timeline::before {
+      content: "";
+      position: absolute;
+      left: 60px;
+      right: 60px;
+      top: 48px;
+      height: 1px;
+      background: linear-gradient(90deg, rgba(86, 227, 255, 0.18), rgba(245, 207, 85, 0.28), rgba(255, 143, 120, 0.18));
     }
 
-    .flow-index {
-      margin: 0;
-      color: var(--brand-0);
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      font-size: 0.86rem;
+    .timeline-step {
+      position: relative;
+      padding: 72px 18px 18px;
+      min-height: 240px;
     }
 
-    .flow-step h3 {
-      margin: 10px 0 8px;
-      font-size: 1.08rem;
-    }
-
-    .flow-step p {
-      margin: 0;
-      color: var(--text-2);
-    }
-
-    .install-wrap {
+    .timeline-step::before {
+      content: attr(data-step);
+      position: absolute;
+      left: 18px;
+      top: 18px;
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 18px;
-      padding: 26px;
+      place-items: center;
+      width: 58px;
+      height: 58px;
+      border-radius: 18px;
+      border: 1px solid rgba(203, 218, 241, 0.16);
+      background:
+        linear-gradient(180deg, rgba(22, 34, 52, 0.96), rgba(11, 17, 26, 0.98));
+      font-family: "Sora", sans-serif;
+      font-size: 1rem;
+      color: var(--gold-strong);
+      box-shadow: 0 14px 24px rgba(0, 0, 0, 0.18);
+      z-index: 1;
     }
 
-    .install-wrap h2,
-    .install-wrap h3 {
-      margin: 0;
+    .timeline-step h3 {
+      font-size: 1.08rem;
+      line-height: 1.16;
     }
 
-    .install-wrap h2 {
-      font-size: clamp(1.52rem, 2.3vw, 2rem);
-      line-height: 1.14;
-    }
-
-    .install-wrap h3 {
-      font-size: 1.16rem;
-    }
-
-    .install-wrap p {
+    .timeline-step p {
       margin: 10px 0 0;
-      color: var(--text-1);
-    }
-
-    .cta-final {
-      padding-top: 24px;
-      padding-bottom: 88px;
-    }
-
-    .cta-box {
-      padding: 34px 24px;
-      text-align: center;
-      border-radius: var(--radius-xl);
-      box-shadow: var(--shadow-lg);
-    }
-
-    .cta-box h2 {
-      margin: 0;
-      font-size: clamp(1.9rem, 3.5vw, 2.8rem);
-      line-height: 1.08;
-    }
-
-    .cta-box p {
-      margin: 14px auto 0;
-      max-width: 66ch;
-      color: var(--text-1);
-    }
-
-    .cta-box .btn {
-      margin-top: 20px;
-    }
-
-    .cta-note {
       color: var(--text-2);
-      font-size: 0.9rem;
+      font-size: 0.92rem;
+    }
+
+    .timeline-step strong {
+      display: block;
+      margin-top: 16px;
+      color: var(--accent-strong);
+      font-size: 0.78rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .cta-shell {
+      padding: 40px 34px;
+      border-radius: 34px;
+      background:
+        radial-gradient(580px circle at 50% 10%, rgba(245, 207, 85, 0.14), transparent 54%),
+        radial-gradient(540px circle at 8% 100%, rgba(86, 227, 255, 0.14), transparent 58%),
+        linear-gradient(180deg, rgba(18, 29, 46, 0.94), rgba(8, 13, 21, 0.98));
+      box-shadow: var(--shadow-lg);
+      text-align: center;
+    }
+
+    .cta-shell h2 {
+      font-size: clamp(2rem, 4vw, 3.6rem);
+      line-height: 1.02;
+      max-width: 14ch;
+      margin-inline: auto;
+    }
+
+    .cta-shell p {
+      margin: 16px auto 0;
+      max-width: 62ch;
+      color: var(--text-1);
+      font-size: 1rem;
+    }
+
+    .cta-actions {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 26px;
+    }
+
+    .cta-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 26px;
+      text-align: left;
+    }
+
+    .cta-item {
+      padding: 14px 14px 12px;
+      border-radius: 18px;
+      border: 1px solid rgba(203, 218, 241, 0.1);
+      background: rgba(203, 218, 241, 0.05);
+    }
+
+    .cta-item strong {
+      display: block;
+      font-size: 0.94rem;
+    }
+
+    .cta-item span {
+      display: block;
+      margin-top: 6px;
+      color: var(--text-2);
+      font-size: 0.84rem;
     }
 
     .site-footer {
-      border-top: 1px solid rgba(194, 210, 236, 0.14);
-      background: rgba(5, 8, 13, 0.84);
+      padding: 28px 0 42px;
     }
 
     .footer-wrap {
-      min-height: 74px;
       display: flex;
       flex-wrap: wrap;
-      align-items: center;
       justify-content: space-between;
-      gap: 10px 14px;
+      align-items: center;
+      gap: 12px 20px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(203, 218, 241, 0.1);
     }
 
     .footer-wrap p {
@@ -733,15 +1065,21 @@
       font-size: 0.88rem;
     }
 
-    .footer-wrap a {
-      color: var(--accent);
+    .footer-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      color: var(--text-1);
       font-size: 0.9rem;
     }
 
     [data-reveal] {
       opacity: 0;
-      transform: translateY(18px) scale(0.994);
-      transition: opacity 0.52s ease, transform 0.52s ease;
+      transform: translateY(22px) scale(0.992);
+      transition:
+        opacity 0.66s ease,
+        transform 0.66s ease;
+      transition-delay: var(--reveal-delay, 0ms);
     }
 
     [data-reveal].is-visible {
@@ -749,75 +1087,224 @@
       transform: translateY(0) scale(1);
     }
 
-    @media (max-width: 1160px) {
-      .summary-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+    @keyframes drift {
+      0% {
+        transform: translate3d(0, 0, 0) scale(1);
       }
 
-      .module-grid {
+      100% {
+        transform: translate3d(22px, -18px, 0) scale(1.06);
+      }
+    }
+
+    @keyframes floatA {
+      0%,
+      100% {
+        transform: translate3d(0, 0, 44px);
+      }
+
+      50% {
+        transform: translate3d(8px, -14px, 44px);
+      }
+    }
+
+    @keyframes floatB {
+      0%,
+      100% {
+        transform: translate3d(0, 0, 44px);
+      }
+
+      50% {
+        transform: translate3d(-10px, 12px, 44px);
+      }
+    }
+
+    @keyframes floatC {
+      0%,
+      100% {
+        transform: translate3d(0, 0, 44px);
+      }
+
+      50% {
+        transform: translate3d(12px, -10px, 44px);
+      }
+    }
+
+    @media (max-width: 1180px) {
+      .hero-grid,
+      .platform-shell {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-copy {
+        max-width: none;
+      }
+
+      .hero-stage {
+        min-height: 640px;
+      }
+
+      .hero-device {
+        top: 86px;
+        right: 28px;
+        width: min(76%, 620px);
+      }
+
+      .signal-strip,
+      .cta-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
+
+      .bento-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .bento-main,
+      .bento-tall {
+        grid-column: auto;
+        grid-row: auto;
+        min-height: 280px;
+      }
+
+      .timeline {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .timeline::before {
+        display: none;
+      }
     }
 
-    @media (max-width: 1040px) {
-      .hero-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .feature-row,
-      .feature-row.reverse {
-        grid-template-columns: 1fr;
-      }
-
-      .feature-row.reverse .feature-media,
-      .feature-row.reverse .feature-copy {
-        order: initial;
-      }
-
-      .feature-media {
-        min-height: 260px;
-      }
-    }
-
-    @media (max-width: 820px) {
+    @media (max-width: 940px) {
       .container {
         width: min(var(--container-w), calc(100% - 30px));
       }
 
+      .nav-wrap {
+        min-height: auto;
+        padding: 14px 0 12px;
+        flex-wrap: wrap;
+      }
+
       .site-nav {
+        order: 3;
+        width: 100%;
+        justify-content: flex-start;
+        overflow-x: auto;
+        padding-inline: 8px;
+      }
+
+      .site-nav::-webkit-scrollbar {
         display: none;
       }
 
-      .metric-grid,
-      .summary-grid,
-      .module-grid,
-      .install-wrap {
+      .hero {
+        padding-top: 30px;
+      }
+
+      .hero h1 {
+        max-width: 12ch;
+      }
+
+      .hero-stage {
+        min-height: 740px;
+        padding: 18px;
+      }
+
+      .hero-device {
+        position: relative;
+        top: auto;
+        right: auto;
+        width: 100%;
+      }
+
+      .float-panel {
+        position: relative;
+        width: 100%;
+        left: auto;
+        right: auto;
+        top: auto;
+        bottom: auto;
+        margin-top: 14px;
+        animation: none;
+      }
+
+      .panel-c {
+        width: 100%;
+      }
+
+      .module-panel {
+        position: static;
+        display: none;
         grid-template-columns: 1fr;
       }
 
-      .hero {
-        padding-top: 58px;
+      .module-panel.is-active {
+        display: grid;
       }
 
-      .hero-callout {
-        position: static;
-        width: 100%;
-        margin-top: 14px;
+      .platform-stage {
+        min-height: auto;
+      }
+
+      .module-media {
+        min-height: 260px;
+      }
+
+      .media-glass {
+        right: 22px;
       }
     }
 
-    @media (max-width: 560px) {
-      .nav-wrap {
-        min-height: 68px;
+    @media (max-width: 720px) {
+      .hero h1,
+      .section-head h2,
+      .cta-shell h2 {
+        letter-spacing: -0.05em;
       }
 
-      .hero-actions {
+      .hero-actions,
+      .cta-actions {
         flex-direction: column;
         align-items: stretch;
       }
 
       .btn {
         width: 100%;
+      }
+
+      .signal-strip,
+      .bento-grid,
+      .cta-grid,
+      .timeline {
+        grid-template-columns: 1fr;
+      }
+
+      .section {
+        padding: 62px 0;
+      }
+
+      .hero-stage {
+        min-height: auto;
+      }
+
+      .platform-shell {
+        padding: 12px;
+      }
+
+      .module-copy,
+      .cta-shell {
+        padding: 24px 20px;
+      }
+
+      .module-media,
+      .bento-card,
+      .timeline-step {
+        padding: 20px;
+      }
+
+      .hero-copy {
+        padding-top: 14px;
       }
     }
 
@@ -841,22 +1328,41 @@
   </style>
 </head>
 <body>
-  <div class="page-glow page-glow-left" aria-hidden="true"></div>
-  <div class="page-glow page-glow-right" aria-hidden="true"></div>
+  <div class="ambient ambient-a" aria-hidden="true"></div>
+  <div class="ambient ambient-b" aria-hidden="true"></div>
+  <div class="ambient ambient-c" aria-hidden="true"></div>
+  <div class="grid-plane" aria-hidden="true"></div>
+  <div class="noise-plane" aria-hidden="true"></div>
 
   <header class="site-header">
+    <div class="scroll-progress" aria-hidden="true">
+      <span class="scroll-progress-bar"></span>
+    </div>
     <div class="container nav-wrap">
-      <a class="brand" href="#topo" aria-label="Ferramenta - inicio">
-        <span class="brand-dot"></span>
-        <span class="brand-name">Ferramenta</span>
+      <a class="brand" href="#topo" aria-label="Mesa Control inicio">
+        <span class="brand-mark"></span>
+        <span class="brand-text">
+          <span class="brand-title">Mesa Control</span>
+          <span class="brand-subtitle">Command platform</span>
+        </span>
       </a>
+
       <nav class="site-nav" aria-label="Navegacao principal">
-        <a href="#resumo">Resumo</a>
-        <a href="#modulos">Modulos</a>
-        <a href="#fluxos">Fluxos</a>
-        <a href="#instalacao">Instalacao</a>
+        <a href="#visao">Visao</a>
+        <a href="#plataforma">Plataforma</a>
+        <a href="#fluxo">Fluxo</a>
+        <a href="#download">Download</a>
       </nav>
-      <a class="btn btn-ghost" href="#cta-final">Baixar</a>
+
+      <a
+        class="btn btn-ghost"
+        data-download-link
+        href="https://ferramenta-updates-937506434821.s3.sa-east-1.amazonaws.com/win/Ferramenta%20Setup%20Latest.exe"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Abrir instalador
+      </a>
     </div>
   </header>
 
@@ -864,25 +1370,19 @@
     <section class="hero">
       <div class="container hero-grid">
         <div class="hero-copy" data-reveal>
-          <p class="eyebrow">Resumo da plataforma</p>
+          <p class="eyebrow">Mesa Control</p>
           <h1>
-            Receita, <span class="marker">operacao</span> e automacao comercial em um desktop unico.
+            Clareza visual para
+            <span class="headline-glow">receita, operacao e automacao.</span>
           </h1>
-          <p class="hero-text">
-            A Ferramenta centraliza importacao de arquivos, consolidacao de receita, calculos de vencimento,
-            historicos operacionais, automacoes com HubXP e Outlook, calendarios de mercado e saida final
-            em cards, PDF e Excel.
+          <p class="hero-lead">
+            Centralize importacao, consolidacao de dados, HubXP, Outlook, dashboards,
+            cards e materiais de saida em uma plataforma desktop desenhada para ritmo,
+            leitura e execucao.
           </p>
-          <div class="hero-chip-row" aria-label="Areas cobertas pela Ferramenta">
-            <span class="hero-chip">Receita</span>
-            <span class="hero-chip">Vencimento</span>
-            <span class="hero-chip">HubXP</span>
-            <span class="hero-chip">Outlook</span>
-            <span class="hero-chip">Cards e OCR</span>
-            <span class="hero-chip">Calendarios</span>
-          </div>
+
           <div class="hero-actions">
-            <a class="btn btn-primary" href="#modulos">Ver modulos</a>
+            <a class="btn btn-primary" href="#plataforma">Conhecer a plataforma</a>
             <a
               class="btn btn-secondary"
               data-download-link
@@ -893,416 +1393,475 @@
               Baixar para Windows
             </a>
           </div>
-          <p class="hero-meta">
-            <span id="latest-version">Versao disponivel: instalador Latest</span>
-            <span class="dot-sep" aria-hidden="true">&middot;</span>
-            <span>Atualizacao automatica apos a instalacao</span>
+
+          <div class="hero-proof" aria-label="Areas centrais da plataforma">
+            <span class="proof-chip">Receita unificada</span>
+            <span class="proof-chip">Operacao em contexto</span>
+            <span class="proof-chip">HubXP e Outlook</span>
+            <span class="proof-chip">Cards, PDF e Excel</span>
+          </div>
+
+          <p class="hero-note">
+            Produto desktop com foco em leitura, fluxo e presenca visual.
           </p>
         </div>
 
-        <figure class="hero-media card" data-reveal>
-          <img
-            src="./assets/landing/hero-dashboard.svg"
-            alt="Painel geral da Ferramenta com modulos de operacao, receita e acompanhamento."
-            width="1200"
-            height="760"
-            fetchpriority="high"
-            decoding="async"
-          >
-          <figcaption class="hero-callout">
-            <strong>Visao unificada</strong>
-            <p>O produto junta dados, execucao, analise e distribuicao comercial sem depender de varias ferramentas separadas.</p>
-          </figcaption>
-        </figure>
+        <div class="hero-visual" data-reveal>
+          <div class="hero-stage card" data-spotlight data-tilt>
+            <div class="hero-device">
+              <img
+                src="./assets/landing/hero-dashboard.svg"
+                alt="Painel principal da Mesa Control."
+                width="1200"
+                height="760"
+                fetchpriority="high"
+                decoding="async"
+              >
+            </div>
+
+            <article class="float-panel panel-a">
+              <small>Receita</small>
+              <h3>Visao clara do que entra no mes</h3>
+              <p>
+                Bovespa, BMF, estruturadas, XP e manual em um fluxo unico de leitura.
+              </p>
+            </article>
+
+            <article class="float-panel panel-b">
+              <small>Operacao</small>
+              <h3>Vencimento, historico e barreira no mesmo mapa</h3>
+              <p>
+                Acompanhamento de payoff, posicoes, exercicio e ritmo operacional.
+              </p>
+            </article>
+
+            <article class="float-panel panel-c">
+              <small>Camada comercial</small>
+              <h3>Pronta para agir e pronta para mostrar</h3>
+              <p>
+                Dashboards, cards, calendarios e materiais de saida com leitura visual consistente.
+              </p>
+              <div class="panel-stat-row" aria-label="Sinais da plataforma">
+                <div class="panel-stat">
+                  <strong>HubXP</strong>
+                  <span>Fluxo central</span>
+                </div>
+                <div class="panel-stat">
+                  <strong>Outlook</strong>
+                  <span>Monitor e envio</span>
+                </div>
+                <div class="panel-stat">
+                  <strong>Desktop</strong>
+                  <span>Rotina da mesa</span>
+                </div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+
+      <div class="container signal-strip" data-reveal>
+        <div class="signal-card">
+          <strong>Importacao central</strong>
+          <span>Planilhas, vinculos e sincronizacao em um fluxo unico.</span>
+        </div>
+        <div class="signal-card">
+          <strong>Receita consolidada</strong>
+          <span>Bases agrupadas com leitura por periodo, time e broker.</span>
+        </div>
+        <div class="signal-card">
+          <strong>Operacao viva</strong>
+          <span>Vencimento, historico, antecipacao e posicoes no mesmo ambiente.</span>
+        </div>
+        <div class="signal-card">
+          <strong>Automacao aplicada</strong>
+          <span>HubXP e Outlook conectados ao ritmo operacional.</span>
+        </div>
+        <div class="signal-card">
+          <strong>Saida pronta</strong>
+          <span>Cards, relatorios e arquivos com linguagem visual de produto.</span>
+        </div>
       </div>
     </section>
 
-    <section class="metrics">
-      <div class="container metric-grid">
-        <article class="metric card" data-reveal>
-          <p class="metric-value">5</p>
-          <p class="metric-label">frentes principais</p>
-          <p class="metric-note">Receita, operacao, automacao, ferramentas de mercado e plataforma.</p>
-        </article>
-        <article class="metric card" data-reveal>
-          <p class="metric-value">20+</p>
-          <p class="metric-label">modulos e telas</p>
-          <p class="metric-note">Da importacao central a HubXP, Outlook, vencimento, cards e calendarios.</p>
-        </article>
-        <article class="metric card" data-reveal>
-          <p class="metric-value">1</p>
-          <p class="metric-label">ambiente de trabalho</p>
-          <p class="metric-note">App desktop Windows com API local, persistencia por usuario e auto-update.</p>
-        </article>
-      </div>
-    </section>
-
-    <section id="resumo" class="section-block">
+    <section class="section" id="visao">
       <div class="container">
         <header class="section-head" data-reveal>
-          <p class="eyebrow">Resumo</p>
-          <h2>A Ferramenta foi organizada para cobrir o ciclo operacional inteiro.</h2>
+          <p class="eyebrow">Visao da plataforma</p>
+          <h2>Uma estrutura comercial pensada para leitura rapida e controle real.</h2>
           <p>
-            O produto nao atua so como importador de planilhas. Ele cobre dados de receita, operacao,
-            risco, automacao comercial e distribuicao final, com leitura consolidada por cliente, assessor,
-            broker, conta e periodo.
+            Mesa Control organiza dados, operacao, automacao e saida visual em uma
+            experiencia que fala com a rotina da mesa. O foco aqui e presenca,
+            consistencia e fluidez.
           </p>
         </header>
 
-        <div class="summary-grid">
-          <article class="summary-card card" data-reveal>
-            <h3>Receita</h3>
-            <p>Importa Bovespa, BMF, Estruturadas, Comissao XP, lancamentos manuais e consolidado complementar.</p>
+        <div class="bento-grid">
+          <article class="bento-card bento-main card" data-reveal>
+            <small>Receita em uma visao unica</small>
+            <h3>Base pronta para acompanhar o mes com contexto.</h3>
+            <p>
+              Reuna Bovespa, BMF, estruturadas, comissao XP e manual em um painel
+              que organiza importacao, filtros e leitura por assessor, broker e cliente.
+            </p>
+            <div class="metric-pill-row" aria-label="Capacidades de receita">
+              <span class="metric-pill">Bovespa</span>
+              <span class="metric-pill">BMF</span>
+              <span class="metric-pill">Estruturadas</span>
+              <span class="metric-pill">Comissao XP</span>
+              <span class="metric-pill">Consolidado</span>
+            </div>
           </article>
 
-          <article class="summary-card card" data-reveal>
-            <h3>Operacao</h3>
-            <p>Trabalha com vencimento, historico, barreiras, posicoes, exercicio, apuracao historica e antecipacao vs CDI.</p>
+          <article class="bento-card card" data-reveal>
+            <small>Operacao em contexto</small>
+            <h3>Vencimento, barreira e historico sem perder o fio.</h3>
+            <p>
+              A operacao deixa de ser uma pilha de telas e vira um mapa claro de acompanhamento.
+            </p>
           </article>
 
-          <article class="summary-card card" data-reveal>
-            <h3>Automacao</h3>
-            <p>Executa fluxos com HubXP e Outlook para coleta operacional, monitoramento e envio.</p>
+          <article class="bento-card bento-tall card" data-reveal>
+            <small>Camada viva da rotina</small>
+            <h3>Automacao no centro do fluxo da mesa.</h3>
+            <p>
+              HubXP e Outlook entram como partes ativas do ambiente e ajudam a manter
+              o ritmo de coleta, monitoramento e envio.
+            </p>
+            <div class="bento-rail">
+              <div class="bento-rail-item">
+                <strong>HubXP</strong>
+                <span>Central de ordens, apuracao e replay de fluxo.</span>
+              </div>
+              <div class="bento-rail-item">
+                <strong>Outlook</strong>
+                <span>Monitoramento de inbox e envio com template.</span>
+              </div>
+              <div class="bento-rail-item">
+                <strong>Cards e materiais</strong>
+                <span>Saida comercial com ritmo visual e padrao unico.</span>
+              </div>
+            </div>
           </article>
 
-          <article class="summary-card card" data-reveal>
-            <h3>Mercado</h3>
-            <p>Inclui calendarios de resultados e proventos, spot, dividendos e ferramentas de apoio comercial.</p>
+          <article class="bento-card card" data-reveal>
+            <small>Comunicacao pronta</small>
+            <h3>Dashboards, cards e saida final em um so lugar.</h3>
+            <p>
+              Dados viram materiais de uso rapido para o time comercial.
+            </p>
           </article>
 
-          <article class="summary-card card" data-reveal>
-            <h3>Plataforma</h3>
-            <p>Funciona como app Electron + React com API embarcada, auth, billing, cache local e atualizacao automatica.</p>
+          <article class="bento-card card" data-reveal>
+            <small>Desktop command center</small>
+            <h3>Plataforma feita para a mesa, no Windows.</h3>
+            <p>
+              API local, cache por usuario, trabalho continuo e instalador oficial.
+            </p>
           </article>
         </div>
       </div>
     </section>
 
-    <section id="modulos" class="section-block section-features">
-      <div class="container feature-list">
-        <header class="section-head" data-reveal>
-          <p class="eyebrow">Modulos</p>
-          <h2>As funcionalidades foram distribuidas em blocos claros de uso.</h2>
-          <p>
-            A pagina resume os principais grupos que aparecem no produto hoje, com foco no que a ferramenta
-            resolve no dia a dia operacional e comercial.
-          </p>
-        </header>
-
-        <article class="feature-row card" data-reveal>
-          <figure class="feature-media">
-            <img
-              src="./assets/landing/feature-importacao.svg"
-              alt="Painel de importacao e consolidacao de dados."
-              width="1200"
-              height="760"
-              loading="lazy"
-              decoding="async"
-            >
-          </figure>
-          <div class="feature-copy">
-            <p class="eyebrow">Receita e importacao</p>
-            <h3>Entrada unica para arquivos, conciliacao e consolidacao de base.</h3>
-            <p>
-              A Ferramenta centraliza catalogo de planilhas, selecao de pasta raiz, vinculacao por modulo
-              e importacao das bases que alimentam receita e leitura comercial.
-            </p>
-            <ul class="feature-points">
-              <li>Importacao de Bovespa, BMF, Estruturadas, XP, Manual e Consolidado.</li>
-              <li>Complemento de meses faltantes e reprocessamento de rejeitados.</li>
-              <li>Edicao de grade, filtros e sincronizacao em lote por modulo.</li>
-            </ul>
-            <div class="feature-tags" aria-label="Pontos-chave de receita e importacao">
-              <span class="feature-tag">Importacao central</span>
-              <span class="feature-tag">Receita consolidada</span>
-              <span class="feature-tag">Sync all</span>
-            </div>
-          </div>
-        </article>
-
-        <article class="feature-row card reverse" data-reveal>
-          <figure class="feature-media">
-            <img
-              src="./assets/landing/feature-tags.svg"
-              alt="Gestao de tags e vinculos por cliente, assessor e carteira."
-              width="1200"
-              height="760"
-              loading="lazy"
-              decoding="async"
-            >
-          </figure>
-          <div class="feature-copy">
-            <p class="eyebrow">Tags e organizacao</p>
-            <h3>Leitura comercial por cliente, assessor, broker, time e carteira.</h3>
-            <p>
-              Tags, vinculos e times mantem a base organizada para filtros globais, metas, senioridade,
-              visao por equipe e reaproveitamento consistente entre modulos.
-            </p>
-            <ul class="feature-points">
-              <li>Import de Tags.xlsx com enriquecimento por codigo de cliente.</li>
-              <li>Hierarquia conta-assessor-broker com ajustes manuais quando necessario.</li>
-              <li>Pastas globais e vinculos de arquivo reaproveitados em varios fluxos.</li>
-            </ul>
-            <div class="feature-tags" aria-label="Pontos-chave de tags e organizacao">
-              <span class="feature-tag">Cliente e assessor</span>
-              <span class="feature-tag">Times</span>
-              <span class="feature-tag">Filtro global</span>
-            </div>
-          </div>
-        </article>
-
-        <article class="feature-row card" data-reveal>
-          <figure class="feature-media">
-            <img
-              src="./assets/landing/feature-vencimento.svg"
-              alt="Tela de vencimento e cenarios de payoff."
-              width="1200"
-              height="760"
-              loading="lazy"
-              decoding="async"
-            >
-          </figure>
-          <div class="feature-copy">
-            <p class="eyebrow">Operacao e risco</p>
-            <h3>Vencimento, historico, barreiras, posicoes e leitura financeira.</h3>
-            <p>
-              A camada operacional combina parse de planilhas, cotacoes de mercado e calculos financeiros
-              para revisar payoff, acompanhar estruturas e gerar saida tecnica para o time.
-            </p>
-            <ul class="feature-points">
-              <li>Calculo de vencimento com barreira, cupom, bonus e overrides manuais.</li>
-              <li>Historico de operacoes, batimento de barreira e apuracao historica por PDF.</li>
-              <li>Posicoes atuais, previsao de exercicio e comparativos de antecipacao contra CDI.</li>
-            </ul>
-            <div class="feature-tags" aria-label="Pontos-chave de operacao e risco">
-              <span class="feature-tag">Payoff</span>
-              <span class="feature-tag">Historico</span>
-              <span class="feature-tag">Posicoes</span>
-            </div>
-          </div>
-        </article>
-
-        <article class="feature-row card reverse" data-reveal>
-          <figure class="feature-media">
-            <img
-              src="./assets/landing/feature-relatorios.svg"
-              alt="Painel com relatorios e distribuicao de saida."
-              width="1200"
-              height="760"
-              loading="lazy"
-              decoding="async"
-            >
-          </figure>
-          <div class="feature-copy">
-            <p class="eyebrow">Automacao e distribuicao</p>
-            <h3>HubXP, Outlook, cards e exportacoes no mesmo fluxo de trabalho.</h3>
-            <p>
-              O produto reune automacao operacional e saida comercial para reduzir troca de contexto:
-              coleta, tratamento, alerta, envio e exportacao vivem no mesmo ambiente.
-            </p>
-            <ul class="feature-points">
-              <li>Central de Ordens e Apuracao Bovespa com sessao compartilhada e replay de fluxo.</li>
-              <li>Outlook com monitor por regras, feed de eventos e envio por conta.</li>
-              <li>Gerador de cards com payoff, OCR, export PNG/PDF e copia pronta para compartilhamento.</li>
-            </ul>
-            <div class="feature-tags" aria-label="Pontos-chave de automacao e distribuicao">
-              <span class="feature-tag">HubXP</span>
-              <span class="feature-tag">Outlook</span>
-              <span class="feature-tag">Cards e PDF</span>
-            </div>
-          </div>
-        </article>
-
-        <div class="capability-cluster">
-          <header class="section-head" data-reveal>
-            <p class="eyebrow">Capacidades em destaque</p>
-            <h2>Outras areas que completam o produto.</h2>
-            <p>
-              Alem dos blocos principais, a Ferramenta tambem agrega monitoramento, analise comercial
-              e utilitarios rapidos que apoiam a rotina da mesa.
-            </p>
-          </header>
-
-          <div class="module-grid">
-            <article class="module-card card" data-reveal>
-              <h3>Dashboard executivo</h3>
-              <p>Visao consolidada de KPIs, fechamento, metas, ranks e leitura diaria.</p>
-              <ul class="module-points">
-                <li>Resumo de receita por periodo.</li>
-                <li>Heatmap e recortes por broker.</li>
-                <li>Leitura gerencial para acompanhamento.</li>
-              </ul>
-            </article>
-
-            <article class="module-card card" data-reveal>
-              <h3>HubXP</h3>
-              <p>Automacao operacional para coleta, consulta e processamento por conta.</p>
-              <ul class="module-points">
-                <li>Central de ordens com filtros e status.</li>
-                <li>Apuracao Bovespa com progresso e abort.</li>
-                <li>Fluxo manual gravavel para replay.</li>
-              </ul>
-            </article>
-
-            <article class="module-card card" data-reveal>
-              <h3>Outlook</h3>
-              <p>Monitoramento de inbox e envio orientado por regra comercial.</p>
-              <ul class="module-points">
-                <li>Sessao dedicada por usuario.</li>
-                <li>Regras por remetente e assunto.</li>
-                <li>Notificacao desktop e historico.</li>
-              </ul>
-            </article>
-
-            <article class="module-card card" data-reveal>
-              <h3>Mercado e agenda</h3>
-              <p>Fontes de mercado e calendarios integrados ao ambiente.</p>
-              <ul class="module-points">
-                <li>Calendario de resultados BR e EUA.</li>
-                <li>Calendario de proventos por data-com.</li>
-                <li>Spot, dividendos e enriquecimento de dados.</li>
-              </ul>
-            </article>
-
-            <article class="module-card card" data-reveal>
-              <h3>Analise comercial</h3>
-              <p>Ferramentas para leitura de producao, atividade e oportunidade.</p>
-              <ul class="module-points">
-                <li>Clientes operando por janela de atividade.</li>
-                <li>Gap por assessor e produto.</li>
-                <li>Antecipacao comparada ao CDI.</li>
-              </ul>
-            </article>
-
-            <article class="module-card card" data-reveal>
-              <h3>Plataforma desktop</h3>
-              <p>Base tecnica para executar tudo no mesmo ambiente de trabalho.</p>
-              <ul class="module-points">
-                <li>Electron + React com API local embarcada.</li>
-                <li>Persistencia por usuario e cache local.</li>
-                <li>Atualizacao automatica apos instalacao.</li>
-              </ul>
-            </article>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section id="fluxos" class="section-block">
+    <section class="section section-platform" id="plataforma">
       <div class="container">
         <header class="section-head" data-reveal>
-          <p class="eyebrow">Fluxos</p>
-          <h2>Como a Ferramenta normalmente entra na rotina.</h2>
+          <p class="eyebrow">Dentro da plataforma</p>
+          <h2>Modulos apresentados com linguagem de produto.</h2>
           <p>
-            O uso do produto costuma seguir uma sequencia simples: preparar dados, organizar contexto,
-            analisar cenarios, automatizar execucao e distribuir a saida final.
+            Cada frente principal ganha um stage proprio. Passe o mouse ou clique
+            nos blocos para explorar a narrativa da pagina.
           </p>
         </header>
 
-        <div class="flow-grid">
-          <article class="flow-step card" data-reveal>
-            <p class="flow-index">01</p>
-            <h3>Centralizar arquivos</h3>
-            <p>Selecionar pasta raiz, catalogar planilhas e vincular cada base ao modulo correto.</p>
-          </article>
+        <div class="platform-shell card" data-reveal>
+          <div class="platform-menu" aria-label="Selecao de modulos">
+            <button type="button" class="module-trigger is-active" data-module-target="receita">
+              <small>01</small>
+              <strong>Receita</strong>
+              <span>Importacao, consolidacao e leitura por base, time e periodo.</span>
+            </button>
 
-          <article class="flow-step card" data-reveal>
-            <p class="flow-index">02</p>
-            <h3>Enriquecer contexto</h3>
-            <p>Aplicar tags, times, vinculos e filtros globais para leitura comercial consistente.</p>
-          </article>
+            <button type="button" class="module-trigger" data-module-target="operacao">
+              <small>02</small>
+              <strong>Operacao</strong>
+              <span>Vencimento, historico, barreira, posicoes e exercicio.</span>
+            </button>
 
-          <article class="flow-step card" data-reveal>
-            <p class="flow-index">03</p>
-            <h3>Analisar receita e operacao</h3>
-            <p>Revisar receita, vencimento, historico, posicoes, barreiras e indicadores de apoio.</p>
-          </article>
+            <button type="button" class="module-trigger" data-module-target="automacao">
+              <small>03</small>
+              <strong>Automacao</strong>
+              <span>HubXP, Outlook e rotinas integradas ao dia da mesa.</span>
+            </button>
 
-          <article class="flow-step card" data-reveal>
-            <p class="flow-index">04</p>
-            <h3>Executar automacoes</h3>
-            <p>Rodar HubXP, Outlook e monitoramentos para buscar dados ou agir sobre a fila operacional.</p>
-          </article>
+            <button type="button" class="module-trigger" data-module-target="comunicacao">
+              <small>04</small>
+              <strong>Comunicacao</strong>
+              <span>Calendarios, cards, dashboards e materiais de saida.</span>
+            </button>
+          </div>
 
-          <article class="flow-step card" data-reveal>
-            <p class="flow-index">05</p>
-            <h3>Distribuir a saida</h3>
-            <p>Gerar PDF, Excel, cards e relatorios prontos para time interno ou cliente final.</p>
-          </article>
+          <div class="platform-stage">
+            <article class="module-panel is-active" data-module-panel="receita">
+              <div class="module-copy">
+                <small>Receita</small>
+                <h3>Consolidacao comercial com leitura direta.</h3>
+                <p>
+                  A base de receita entra, organiza e aparece de forma clara, pronta
+                  para acompanhar o mes com recortes por origem, equipe e carteira.
+                </p>
+                <ul class="module-points">
+                  <li>Importacao de Bovespa, BMF, estruturadas, XP, manual e consolidado.</li>
+                  <li>Vinculos de arquivo e sincronizacao em lote no mesmo fluxo.</li>
+                  <li>Filtros e leitura comercial orientados para a rotina da mesa.</li>
+                </ul>
+                <div class="module-tag-row">
+                  <span class="module-tag">Importacao central</span>
+                  <span class="module-tag">Receita consolidada</span>
+                  <span class="module-tag">Times e vinculos</span>
+                </div>
+              </div>
+              <figure class="module-media">
+                <img
+                  src="./assets/landing/feature-importacao.svg"
+                  alt="Painel de importacao da Mesa Control."
+                  width="1200"
+                  height="760"
+                  loading="lazy"
+                  decoding="async"
+                >
+                <figcaption class="media-glass">
+                  <strong>Fluxo central</strong>
+                  <span>Entrada, ajuste e consolidacao em uma tela de produto.</span>
+                </figcaption>
+              </figure>
+            </article>
+
+            <article class="module-panel" data-module-panel="operacao">
+              <div class="module-copy">
+                <small>Operacao</small>
+                <h3>Vencimento e historico com palco proprio.</h3>
+                <p>
+                  A camada operacional junta payoff, barreira, historico, exercicio
+                  e posicoes em uma leitura que sustenta decisao e acompanhamento.
+                </p>
+                <ul class="module-points">
+                  <li>Calculo de vencimento com barreira, cupom, bonus e overrides.</li>
+                  <li>Historico de operacoes, batimento e apuracao historica por PDF.</li>
+                  <li>Posicoes atuais, exercicio e antecipacao em um mesmo ambiente.</li>
+                </ul>
+                <div class="module-tag-row">
+                  <span class="module-tag">Payoff</span>
+                  <span class="module-tag">Historico</span>
+                  <span class="module-tag">Posicoes</span>
+                </div>
+              </div>
+              <figure class="module-media">
+                <img
+                  src="./assets/landing/feature-vencimento.svg"
+                  alt="Painel de operacao da Mesa Control."
+                  width="1200"
+                  height="760"
+                  loading="lazy"
+                  decoding="async"
+                >
+                <figcaption class="media-glass">
+                  <strong>Leitura de contexto</strong>
+                  <span>Operacao organizada para visualizar decisao, risco e ritmo.</span>
+                </figcaption>
+              </figure>
+            </article>
+
+            <article class="module-panel" data-module-panel="automacao">
+              <div class="module-copy">
+                <small>Automacao</small>
+                <h3>HubXP e Outlook como parte do fluxo central.</h3>
+                <p>
+                  Automacao aqui aparece como ferramenta aplicada ao dia da mesa,
+                  com coleta, monitoramento, replay de fluxo e envio por conta.
+                </p>
+                <ul class="module-points">
+                  <li>Central de ordens e apuracao Bovespa com acompanhamento de processo.</li>
+                  <li>Fluxo manual gravavel e replay orientado ao contexto real.</li>
+                  <li>Outlook com regras, historico, monitor e envio em lote.</li>
+                </ul>
+                <div class="module-tag-row">
+                  <span class="module-tag">HubXP</span>
+                  <span class="module-tag">Outlook</span>
+                  <span class="module-tag">Rotina automatizada</span>
+                </div>
+              </div>
+              <figure class="module-media">
+                <img
+                  src="./assets/landing/hero-dashboard.svg"
+                  alt="Painel geral da Mesa Control com automacao."
+                  width="1200"
+                  height="760"
+                  loading="lazy"
+                  decoding="async"
+                >
+                <figcaption class="media-glass">
+                  <strong>Processo vivo</strong>
+                  <span>Coleta, acompanhamento e distribuicao no mesmo ambiente.</span>
+                </figcaption>
+              </figure>
+            </article>
+
+            <article class="module-panel" data-module-panel="comunicacao">
+              <div class="module-copy">
+                <small>Comunicacao</small>
+                <h3>Saida visual com ritmo comercial.</h3>
+                <p>
+                  Quando a base esta pronta, a plataforma entrega dashboards,
+                  calendarios, cards e materiais com padrao visual forte.
+                </p>
+                <ul class="module-points">
+                  <li>Calendarios de resultados e proventos ligados ao dia da mesa.</li>
+                  <li>Cards com payoff, OCR e export em PNG, PDF e clipboard.</li>
+                  <li>Materiais de apoio pensados para distribuir e acompanhar.</li>
+                </ul>
+                <div class="module-tag-row">
+                  <span class="module-tag">Calendarios</span>
+                  <span class="module-tag">Cards</span>
+                  <span class="module-tag">PDF e Excel</span>
+                </div>
+              </div>
+              <figure class="module-media">
+                <img
+                  src="./assets/landing/feature-relatorios.svg"
+                  alt="Painel de relatorios e materiais da Mesa Control."
+                  width="1200"
+                  height="760"
+                  loading="lazy"
+                  decoding="async"
+                >
+                <figcaption class="media-glass">
+                  <strong>Pronta para sair</strong>
+                  <span>Visuais e arquivos que ajudam o time a agir com rapidez.</span>
+                </figcaption>
+              </figure>
+            </article>
+          </div>
         </div>
       </div>
     </section>
 
-    <section id="instalacao" class="section-block">
-      <div class="container install-wrap card" data-reveal>
-        <div>
-          <p class="eyebrow">Instalacao</p>
-          <h2>Pagina pensada para apresentar a ferramenta e servir como ponto oficial de download.</h2>
+    <section class="section section-flow" id="fluxo">
+      <div class="container">
+        <header class="section-head" data-reveal>
+          <p class="eyebrow">Fluxo da pagina</p>
+          <h2>Uma sequencia que mostra como a plataforma entra na rotina.</h2>
           <p>
-            O ambiente principal continua sendo desktop Windows. Depois da instalacao, a aplicacao
-            recebe atualizacoes automaticamente e mantem a operacao concentrada em um unico app.
+            O percurso abaixo foi desenhado para contar uma historia de uso clara,
+            com foco em ritmo, leitura e presenca visual.
           </p>
-          <ul class="check-list">
-            <li>Windows 10 ou superior em 64 bits.</li>
-            <li>Conexao com internet para atualizacao e integracoes.</li>
-            <li>Permissao local para executar o instalador.</li>
-          </ul>
-        </div>
+        </header>
 
-        <div>
-          <h3>Fluxo recomendado</h3>
-          <ul class="install-steps">
-            <li>Baixar o instalador oficial da Ferramenta.</li>
-            <li>Executar a instalacao padrao no Windows.</li>
-            <li>Abrir o app, configurar pastas e vinculos iniciais.</li>
-            <li>Seguir para importacao, analise e automacao conforme o modulo desejado.</li>
-          </ul>
+        <div class="timeline">
+          <article class="timeline-step card" data-reveal data-step="01">
+            <h3>Centralizar a base</h3>
+            <p>Arquivos, vinculos e importacao entram em um mesmo fluxo de preparo.</p>
+            <strong>Base pronta</strong>
+          </article>
+
+          <article class="timeline-step card" data-reveal data-step="02">
+            <h3>Organizar o contexto</h3>
+            <p>Tags, times, carteiras e filtros sustentam a leitura comercial.</p>
+            <strong>Leitura clara</strong>
+          </article>
+
+          <article class="timeline-step card" data-reveal data-step="03">
+            <h3>Ler receita e operacao</h3>
+            <p>Receita, vencimento, historico, barreira e posicoes ganham palco proprio.</p>
+            <strong>Contexto ativo</strong>
+          </article>
+
+          <article class="timeline-step card" data-reveal data-step="04">
+            <h3>Acionar automacao</h3>
+            <p>HubXP e Outlook entram no ritmo da mesa com monitoramento e execucao.</p>
+            <strong>Ritmo aplicado</strong>
+          </article>
+
+          <article class="timeline-step card" data-reveal data-step="05">
+            <h3>Entregar saida visual</h3>
+            <p>Dashboards, cards, PDF e Excel fecham o ciclo de apresentacao.</p>
+            <strong>Saida pronta</strong>
+          </article>
         </div>
       </div>
     </section>
 
-    <section id="cta-final" class="section-block cta-final">
-      <div class="container cta-box card" data-reveal>
-        <p class="eyebrow">Download</p>
-        <h2>Baixar a versao desktop da Ferramenta</h2>
-        <p>
-          Esta pagina resume o produto e aponta para o instalador oficial. O app cobre receita,
-          operacao, HubXP, Outlook, analise comercial, calendarios e distribuicao final no mesmo ambiente.
-        </p>
-        <a
-          class="btn btn-primary btn-xl"
-          data-download-link
-          href="https://ferramenta-updates-937506434821.s3.sa-east-1.amazonaws.com/win/Ferramenta%20Setup%20Latest.exe"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Baixar para Windows
-        </a>
-        <p class="cta-note">Depois de instalado, o aplicativo verifica e aplica atualizacoes automaticamente.</p>
+    <section class="section" id="download">
+      <div class="container">
+        <div class="cta-shell card" data-reveal>
+          <p class="eyebrow">Desktop release</p>
+          <h2>Mesa Control organiza o ritmo da mesa com presenca, leitura e execucao.</h2>
+          <p>
+            Esta pagina foi montada para apresentar a plataforma de forma comercial.
+            O instalador oficial segue logo abaixo para uso em Windows.
+          </p>
+
+          <div class="cta-actions">
+            <a
+              class="btn btn-primary btn-xl"
+              data-download-link
+              href="https://ferramenta-updates-937506434821.s3.sa-east-1.amazonaws.com/win/Ferramenta%20Setup%20Latest.exe"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Baixar para Windows
+            </a>
+            <a class="btn btn-secondary btn-xl" href="#plataforma">Explorar modulos</a>
+          </div>
+
+          <div class="cta-grid" aria-label="Capacidades finais">
+            <div class="cta-item">
+              <strong>Receita</strong>
+              <span>Importacao, base consolidada e leitura do mes.</span>
+            </div>
+            <div class="cta-item">
+              <strong>Operacao</strong>
+              <span>Payoff, historico, barreira, posicoes e exercicio.</span>
+            </div>
+            <div class="cta-item">
+              <strong>Automacao</strong>
+              <span>HubXP, Outlook, replay de fluxo e monitoramento.</span>
+            </div>
+            <div class="cta-item">
+              <strong>Saida visual</strong>
+              <span>Calendarios, cards, dashboards, PDF e Excel.</span>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   </main>
 
   <footer class="site-footer">
     <div class="container footer-wrap">
-      <p>Ferramenta - resumo do produto e distribuicao oficial do instalador Windows.</p>
-      <a
-        data-download-link
-        href="https://ferramenta-updates-937506434821.s3.sa-east-1.amazonaws.com/win/Ferramenta%20Setup%20Latest.exe"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        Link direto do instalador
-      </a>
+      <p>Mesa Control. Plataforma desktop para a rotina da mesa.</p>
+      <div class="footer-links">
+        <a href="#visao">Visao</a>
+        <a href="#plataforma">Plataforma</a>
+        <a href="#fluxo">Fluxo</a>
+        <a
+          data-download-link
+          href="https://ferramenta-updates-937506434821.s3.sa-east-1.amazonaws.com/win/Ferramenta%20Setup%20Latest.exe"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Instalador
+        </a>
+      </div>
     </div>
   </footer>
 
   <script>
-    const FALLBACK_DOWNLOAD_URL = 'https://ferramenta-updates-937506434821.s3.sa-east-1.amazonaws.com/win/Ferramenta%20Setup%20Latest.exe'
+    const DOWNLOAD_URL = 'https://ferramenta-updates-937506434821.s3.sa-east-1.amazonaws.com/win/Ferramenta%20Setup%20Latest.exe'
 
-    const setDownloadLinks = (downloadUrl) => {
-      document.querySelectorAll('[data-download-link]').forEach((link) => {
-        if (link instanceof HTMLAnchorElement) link.href = downloadUrl
+    const setDownloadLinks = () => {
+      document.querySelectorAll('[data-download-link]').forEach((node) => {
+        if (node instanceof HTMLAnchorElement) node.href = DOWNLOAD_URL
       })
     }
 
@@ -1310,8 +1869,12 @@
       const nodes = Array.from(document.querySelectorAll('[data-reveal]'))
       if (!nodes.length) return
 
-      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      if (prefersReducedMotion || !('IntersectionObserver' in window)) {
+      nodes.forEach((node, index) => {
+        node.style.setProperty('--reveal-delay', `${Math.min(index * 40, 240)}ms`)
+      })
+
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      if (reduced || !('IntersectionObserver' in window)) {
         nodes.forEach((node) => node.classList.add('is-visible'))
         return
       }
@@ -1323,7 +1886,7 @@
           observer.unobserve(entry.target)
         })
       }, {
-        rootMargin: '0px 0px -80px 0px',
+        rootMargin: '0px 0px -90px 0px',
         threshold: 0.12,
       })
 
@@ -1331,48 +1894,150 @@
     }
 
     const setupActiveNav = () => {
-      const navLinks = Array.from(document.querySelectorAll('.site-nav a[href^="#"]'))
-      if (!navLinks.length) return
+      const links = Array.from(document.querySelectorAll('.site-nav a[href^="#"]'))
+      if (!links.length) return
 
-      const sectionPairs = navLinks
+      const targets = links
         .map((link) => {
           const href = link.getAttribute('href') || ''
           const id = href.startsWith('#') ? href.slice(1) : ''
           const section = id ? document.getElementById(id) : null
-          return section ? { id, section, link } : null
+          return section ? { id, link, section } : null
         })
         .filter(Boolean)
 
-      if (!sectionPairs.length) return
+      if (!targets.length) return
 
-      const setActiveById = (id) => {
-        sectionPairs.forEach(({ id: sectionId, link }) => {
-          link.classList.toggle('is-active', sectionId === id)
+      const setActive = (id) => {
+        targets.forEach((item) => {
+          item.link.classList.toggle('is-active', item.id === id)
         })
       }
 
-      const updateActiveOnScroll = () => {
+      const update = () => {
         const headerHeight = document.querySelector('.site-header')?.offsetHeight || 72
-        const referenceY = window.scrollY + headerHeight + 40
-        let activeId = sectionPairs[0].id
+        const marker = window.scrollY + headerHeight + 48
+        let activeId = targets[0].id
 
-        for (const { id, section } of sectionPairs) {
-          if (section.offsetTop <= referenceY) activeId = id
-          else break
+        for (const item of targets) {
+          if (item.section.offsetTop <= marker) activeId = item.id
         }
 
-        setActiveById(activeId)
+        setActive(activeId)
       }
 
-      window.addEventListener('scroll', updateActiveOnScroll, { passive: true })
-      window.addEventListener('resize', updateActiveOnScroll)
-      updateActiveOnScroll()
+      window.addEventListener('scroll', update, { passive: true })
+      window.addEventListener('resize', update)
+      update()
     }
 
-    const downloadUrl = FALLBACK_DOWNLOAD_URL
-    setDownloadLinks(downloadUrl)
+    const setupScrollProgress = () => {
+      const bar = document.querySelector('.scroll-progress-bar')
+      if (!(bar instanceof HTMLElement)) return
+
+      const update = () => {
+        const max = document.documentElement.scrollHeight - window.innerHeight
+        const ratio = max > 0 ? (window.scrollY / max) * 100 : 0
+        bar.style.width = `${Math.max(0, Math.min(100, ratio))}%`
+      }
+
+      window.addEventListener('scroll', update, { passive: true })
+      window.addEventListener('resize', update)
+      update()
+    }
+
+    const setupSpotlight = () => {
+      const targets = Array.from(document.querySelectorAll('[data-spotlight]'))
+      if (!targets.length) return
+
+      const finePointer = window.matchMedia('(pointer: fine)').matches
+      if (!finePointer) return
+
+      targets.forEach((target) => {
+        target.addEventListener('pointermove', (event) => {
+          const rect = target.getBoundingClientRect()
+          const x = ((event.clientX - rect.left) / rect.width) * 100
+          const y = ((event.clientY - rect.top) / rect.height) * 100
+          target.style.setProperty('--hero-spot-x', `${x}%`)
+          target.style.setProperty('--hero-spot-y', `${y}%`)
+        })
+
+        target.addEventListener('pointerleave', () => {
+          target.style.setProperty('--hero-spot-x', '72%')
+          target.style.setProperty('--hero-spot-y', '24%')
+        })
+      })
+    }
+
+    const setupTilt = () => {
+      const targets = Array.from(document.querySelectorAll('[data-tilt]'))
+      if (!targets.length) return
+
+      const finePointer = window.matchMedia('(pointer: fine)').matches
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      if (!finePointer || reduced) return
+
+      targets.forEach((target) => {
+        target.addEventListener('pointermove', (event) => {
+          const rect = target.getBoundingClientRect()
+          const px = (event.clientX - rect.left) / rect.width
+          const py = (event.clientY - rect.top) / rect.height
+          const rotateY = (px - 0.5) * 10
+          const rotateX = (0.5 - py) * 10
+          target.style.transform = `perspective(1400px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`
+        })
+
+        target.addEventListener('pointerleave', () => {
+          target.style.transform = 'perspective(1400px) rotateX(0deg) rotateY(0deg)'
+        })
+      })
+    }
+
+    const setupModuleSwitch = () => {
+      const buttons = Array.from(document.querySelectorAll('.module-trigger[data-module-target]'))
+      const panels = Array.from(document.querySelectorAll('.module-panel[data-module-panel]'))
+      if (!buttons.length || !panels.length) return
+
+      let activeId = buttons.find((button) => button.classList.contains('is-active'))?.dataset.moduleTarget || buttons[0].dataset.moduleTarget
+      let autoRotate = true
+
+      const setActive = (id) => {
+        activeId = id
+        buttons.forEach((button) => {
+          button.classList.toggle('is-active', button.dataset.moduleTarget === id)
+        })
+        panels.forEach((panel) => {
+          panel.classList.toggle('is-active', panel.dataset.modulePanel === id)
+        })
+      }
+
+      buttons.forEach((button) => {
+        const activate = () => {
+          autoRotate = false
+          setActive(button.dataset.moduleTarget)
+        }
+
+        button.addEventListener('click', activate)
+        button.addEventListener('mouseenter', activate)
+      })
+
+      setActive(activeId)
+
+      window.setInterval(() => {
+        if (!autoRotate || window.matchMedia('(max-width: 940px)').matches) return
+        const index = buttons.findIndex((button) => button.dataset.moduleTarget === activeId)
+        const next = buttons[(index + 1) % buttons.length]
+        if (next) setActive(next.dataset.moduleTarget)
+      }, 4200)
+    }
+
+    setDownloadLinks()
     setupReveal()
     setupActiveNav()
+    setupScrollProgress()
+    setupSpotlight()
+    setupTilt()
+    setupModuleSwitch()
   </script>
 </body>
 </html>
