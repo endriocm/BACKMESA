@@ -3,13 +3,842 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Download oficial da Ferramenta para Windows. Aplicativo desktop para importação de planilhas, tags, vencimentos e exportação de relatórios.">
-  <meta name="theme-color" content="#070b12">
-  <title>Ferramenta | Download Oficial</title>
+  <meta
+    name="description"
+    content="Resumo oficial da Ferramenta. Plataforma desktop para receita, operacao, vencimento, HubXP, Outlook, relatorios e automacoes."
+  >
+  <meta name="theme-color" content="#08101a">
+  <title>Ferramenta | Resumo da Plataforma</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./styles.css">
+  <style>
+    :root {
+      --bg-0: #05070d;
+      --bg-1: #0a101b;
+      --bg-2: #101827;
+      --surface-0: rgba(18, 26, 40, 0.9);
+      --surface-1: rgba(19, 29, 45, 0.96);
+      --surface-2: rgba(25, 38, 59, 0.96);
+      --text-0: #f4f7fb;
+      --text-1: #cad5e7;
+      --text-2: #95a6c3;
+      --brand-0: #f1c40f;
+      --brand-1: #d4af37;
+      --accent: #38d5ff;
+      --accent-soft: rgba(56, 213, 255, 0.14);
+      --ok: #2ce0a7;
+      --danger: #ff6f87;
+      --border-soft: rgba(194, 210, 236, 0.18);
+      --shadow-lg: 0 32px 84px rgba(0, 0, 0, 0.42);
+      --shadow-md: 0 16px 40px rgba(0, 0, 0, 0.28);
+      --radius-xl: 26px;
+      --radius-lg: 20px;
+      --radius-md: 16px;
+      --container-w: 1200px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(1200px 620px at 8% -2%, rgba(56, 213, 255, 0.16), transparent 62%),
+        radial-gradient(900px 520px at 92% 8%, rgba(241, 196, 15, 0.16), transparent 68%),
+        linear-gradient(180deg, #0a1019 0%, #060910 58%, #04060a 100%);
+      color: var(--text-0);
+      font-family: "Manrope", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.58;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    img {
+      display: block;
+      max-width: 100%;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .page-glow {
+      position: fixed;
+      z-index: -1;
+      pointer-events: none;
+      width: 420px;
+      height: 420px;
+      filter: blur(86px);
+      opacity: 0.36;
+    }
+
+    .page-glow-left {
+      top: 120px;
+      left: -140px;
+      background: radial-gradient(circle, rgba(56, 213, 255, 0.42) 0%, rgba(56, 213, 255, 0.04) 74%);
+    }
+
+    .page-glow-right {
+      right: -180px;
+      bottom: 160px;
+      background: radial-gradient(circle, rgba(241, 196, 15, 0.38) 0%, rgba(212, 175, 55, 0.04) 72%);
+    }
+
+    .container {
+      width: min(var(--container-w), calc(100% - 48px));
+      margin: 0 auto;
+    }
+
+    .card {
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 46%),
+        linear-gradient(180deg, rgba(17, 25, 39, 0.9), rgba(11, 17, 27, 0.96));
+      border: 1px solid rgba(196, 212, 237, 0.17);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-md);
+    }
+
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      backdrop-filter: blur(14px);
+      background: linear-gradient(180deg, rgba(7, 11, 18, 0.92), rgba(7, 11, 18, 0.7));
+      border-bottom: 1px solid rgba(184, 197, 222, 0.13);
+    }
+
+    .nav-wrap {
+      min-height: 74px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-family: "Space Grotesk", "Manrope", sans-serif;
+      letter-spacing: 0.02em;
+    }
+
+    .brand-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--brand-0), var(--brand-1));
+      box-shadow: 0 0 16px rgba(241, 196, 15, 0.5);
+    }
+
+    .brand-name {
+      font-size: 1.02rem;
+      font-weight: 700;
+    }
+
+    .site-nav {
+      display: inline-flex;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .site-nav a {
+      position: relative;
+      padding: 4px 2px;
+      font-size: 0.92rem;
+      color: var(--text-1);
+      transition: color 0.2s ease;
+    }
+
+    .site-nav a:hover {
+      color: var(--text-0);
+    }
+
+    .site-nav a::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: -8px;
+      height: 2px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(56, 213, 255, 0.08), rgba(56, 213, 255, 0.75), rgba(56, 213, 255, 0.08));
+      opacity: 0;
+      transform: scaleX(0.4);
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .site-nav a.is-active::after,
+    .site-nav a:hover::after {
+      opacity: 1;
+      transform: scaleX(1);
+    }
+
+    .site-nav a.is-active {
+      color: #83ebff;
+      text-shadow: 0 0 12px rgba(56, 213, 255, 0.35);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: 0;
+      border-radius: 999px;
+      padding: 0.76rem 1.18rem;
+      font-weight: 700;
+      font-size: 0.94rem;
+      cursor: pointer;
+      transition: transform 0.22s ease, box-shadow 0.22s ease, background-color 0.22s ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .btn:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
+    }
+
+    .btn-primary {
+      color: #11161f;
+      background: linear-gradient(135deg, var(--brand-0), var(--brand-1));
+      box-shadow: 0 14px 36px rgba(212, 175, 55, 0.26);
+    }
+
+    .btn-secondary {
+      color: var(--text-0);
+      background: linear-gradient(180deg, #152339, #121a2b);
+      border: 1px solid var(--border-soft);
+    }
+
+    .btn-ghost {
+      color: var(--text-0);
+      background: rgba(173, 189, 214, 0.08);
+      border: 1px solid rgba(196, 212, 237, 0.24);
+    }
+
+    .btn-xl {
+      padding: 0.96rem 1.46rem;
+      font-size: 1rem;
+    }
+
+    .hero {
+      padding: 88px 0 44px;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.08fr 0.92fr;
+      align-items: center;
+      gap: 34px;
+    }
+
+    .eyebrow {
+      margin: 0 0 10px;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.11em;
+      font-size: 0.73rem;
+      font-weight: 700;
+    }
+
+    h1,
+    h2,
+    h3 {
+      font-family: "Space Grotesk", "Manrope", sans-serif;
+      letter-spacing: -0.016em;
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-size: clamp(2.2rem, 4.5vw, 3.9rem);
+      line-height: 1.06;
+    }
+
+    .marker {
+      position: relative;
+      display: inline-block;
+      z-index: 1;
+    }
+
+    .marker::after {
+      content: "";
+      position: absolute;
+      left: -3px;
+      right: -3px;
+      bottom: 0.08em;
+      z-index: -1;
+      height: 0.32em;
+      border-radius: 6px;
+      background: linear-gradient(90deg, rgba(241, 196, 15, 0.42), rgba(212, 175, 55, 0.18));
+    }
+
+    .hero-text {
+      margin: 16px 0 0;
+      color: var(--text-1);
+      font-size: 1.05rem;
+      max-width: 62ch;
+    }
+
+    .hero-actions {
+      margin-top: 26px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .hero-meta {
+      margin-top: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      color: var(--text-2);
+      font-size: 0.9rem;
+    }
+
+    .dot-sep {
+      color: rgba(151, 167, 193, 0.74);
+    }
+
+    .hero-chip-row {
+      margin-top: 24px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .hero-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(186, 204, 232, 0.22);
+      background: rgba(151, 181, 220, 0.08);
+      color: #e7eef9;
+      font-size: 0.84rem;
+      letter-spacing: 0.01em;
+    }
+
+    .hero-chip::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--accent), var(--ok));
+      box-shadow: 0 0 0 3px rgba(56, 213, 255, 0.14);
+    }
+
+    .hero-media {
+      position: relative;
+      overflow: hidden;
+      border-radius: var(--radius-xl);
+      padding: 14px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 42%),
+        linear-gradient(180deg, rgba(16, 24, 38, 0.96), rgba(11, 17, 27, 0.98));
+    }
+
+    .hero-media img {
+      width: 100%;
+      border-radius: 18px;
+      border: 1px solid rgba(194, 210, 236, 0.12);
+    }
+
+    .hero-callout {
+      position: absolute;
+      right: 28px;
+      bottom: 28px;
+      width: min(270px, calc(100% - 56px));
+      padding: 16px 18px;
+      border-radius: 18px;
+      border: 1px solid rgba(185, 205, 235, 0.18);
+      background: rgba(8, 14, 22, 0.84);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.26);
+    }
+
+    .hero-callout p {
+      margin: 0;
+      color: var(--text-1);
+      font-size: 0.92rem;
+    }
+
+    .hero-callout strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--text-0);
+      font-size: 0.98rem;
+    }
+
+    .metrics {
+      padding: 18px 0 46px;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .metric {
+      padding: 20px 20px 18px;
+    }
+
+    .metric-value {
+      margin: 0;
+      font-size: 2.38rem;
+      line-height: 1;
+      font-weight: 800;
+      color: var(--brand-0);
+    }
+
+    .metric-label {
+      margin: 7px 0 6px;
+      font-weight: 700;
+      color: var(--text-0);
+    }
+
+    .metric-note {
+      margin: 0;
+      color: var(--text-2);
+      font-size: 0.9rem;
+    }
+
+    .section-block {
+      padding: 52px 0;
+    }
+
+    .section-head {
+      max-width: 76ch;
+    }
+
+    .section-head h2 {
+      margin: 0;
+      font-size: clamp(1.64rem, 3vw, 2.56rem);
+      line-height: 1.12;
+    }
+
+    .section-head p {
+      margin: 12px 0 0;
+      color: var(--text-1);
+    }
+
+    .summary-grid {
+      margin-top: 22px;
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .summary-card {
+      padding: 20px 18px;
+      background:
+        linear-gradient(180deg, rgba(56, 213, 255, 0.07), transparent 44%),
+        linear-gradient(180deg, rgba(18, 26, 40, 0.94), rgba(10, 16, 25, 0.98));
+    }
+
+    .summary-card h3 {
+      margin: 0 0 10px;
+      font-size: 1.05rem;
+    }
+
+    .summary-card p {
+      margin: 0;
+      color: var(--text-1);
+      font-size: 0.93rem;
+    }
+
+    .section-features {
+      padding-top: 18px;
+    }
+
+    .feature-list {
+      display: grid;
+      gap: 24px;
+    }
+
+    .feature-row {
+      position: relative;
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: 1.03fr 0.97fr;
+      gap: 0;
+      align-items: stretch;
+    }
+
+    .feature-row::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(520px 260px at 12% 20%, rgba(56, 213, 255, 0.08), transparent 70%),
+        radial-gradient(500px 260px at 88% 82%, rgba(241, 196, 15, 0.08), transparent 72%);
+      pointer-events: none;
+    }
+
+    .feature-row > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .feature-row.reverse {
+      grid-template-columns: 0.97fr 1.03fr;
+    }
+
+    .feature-row.reverse .feature-media {
+      order: 2;
+    }
+
+    .feature-row.reverse .feature-copy {
+      order: 1;
+    }
+
+    .feature-media {
+      min-height: 100%;
+      overflow: hidden;
+      border-right: 1px solid rgba(184, 204, 231, 0.1);
+      background: #101824;
+    }
+
+    .feature-media img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .feature-copy {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: clamp(22px, 2.5vw, 34px);
+      background:
+        linear-gradient(180deg, rgba(16, 24, 37, 0.78), rgba(10, 15, 24, 0.92)),
+        linear-gradient(140deg, rgba(56, 213, 255, 0.04), rgba(241, 196, 15, 0.06));
+    }
+
+    .feature-copy h3 {
+      margin: 0;
+      font-size: clamp(1.34rem, 2.2vw, 1.8rem);
+      line-height: 1.16;
+    }
+
+    .feature-copy p {
+      margin: 0;
+      color: var(--text-1);
+    }
+
+    .feature-points,
+    .module-points,
+    .check-list,
+    .install-steps {
+      margin: 6px 0 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 9px;
+    }
+
+    .feature-points li,
+    .module-points li,
+    .check-list li,
+    .install-steps li {
+      position: relative;
+      padding-left: 18px;
+      color: var(--text-1);
+      font-size: 0.94rem;
+      line-height: 1.44;
+    }
+
+    .feature-points li::before,
+    .module-points li::before,
+    .check-list li::before,
+    .install-steps li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0.56em;
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #3adeff, #16c685);
+      box-shadow: 0 0 0 3px rgba(58, 222, 255, 0.12);
+    }
+
+    .feature-tags {
+      margin-top: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .feature-tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 5px 11px;
+      border-radius: 999px;
+      border: 1px solid rgba(178, 198, 224, 0.26);
+      background: rgba(157, 182, 217, 0.1);
+      color: #e4edf9;
+      font-size: 0.78rem;
+      letter-spacing: 0.02em;
+    }
+
+    .capability-cluster {
+      margin-top: 12px;
+      display: grid;
+      gap: 20px;
+    }
+
+    .module-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .module-card {
+      padding: 20px 20px 18px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 34%),
+        linear-gradient(180deg, rgba(17, 25, 39, 0.92), rgba(10, 15, 23, 0.98));
+    }
+
+    .module-card h3 {
+      margin: 0 0 10px;
+      font-size: 1.08rem;
+    }
+
+    .module-card p {
+      margin: 0;
+      color: var(--text-1);
+    }
+
+    .flow-grid {
+      margin-top: 22px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 16px;
+    }
+
+    .flow-step {
+      padding: 20px 18px 18px;
+    }
+
+    .flow-index {
+      margin: 0;
+      color: var(--brand-0);
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      font-size: 0.86rem;
+    }
+
+    .flow-step h3 {
+      margin: 10px 0 8px;
+      font-size: 1.08rem;
+    }
+
+    .flow-step p {
+      margin: 0;
+      color: var(--text-2);
+    }
+
+    .install-wrap {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      padding: 26px;
+    }
+
+    .install-wrap h2,
+    .install-wrap h3 {
+      margin: 0;
+    }
+
+    .install-wrap h2 {
+      font-size: clamp(1.52rem, 2.3vw, 2rem);
+      line-height: 1.14;
+    }
+
+    .install-wrap h3 {
+      font-size: 1.16rem;
+    }
+
+    .install-wrap p {
+      margin: 10px 0 0;
+      color: var(--text-1);
+    }
+
+    .cta-final {
+      padding-top: 24px;
+      padding-bottom: 88px;
+    }
+
+    .cta-box {
+      padding: 34px 24px;
+      text-align: center;
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .cta-box h2 {
+      margin: 0;
+      font-size: clamp(1.9rem, 3.5vw, 2.8rem);
+      line-height: 1.08;
+    }
+
+    .cta-box p {
+      margin: 14px auto 0;
+      max-width: 66ch;
+      color: var(--text-1);
+    }
+
+    .cta-box .btn {
+      margin-top: 20px;
+    }
+
+    .cta-note {
+      color: var(--text-2);
+      font-size: 0.9rem;
+    }
+
+    .site-footer {
+      border-top: 1px solid rgba(194, 210, 236, 0.14);
+      background: rgba(5, 8, 13, 0.84);
+    }
+
+    .footer-wrap {
+      min-height: 74px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px 14px;
+    }
+
+    .footer-wrap p {
+      margin: 0;
+      color: var(--text-2);
+      font-size: 0.88rem;
+    }
+
+    .footer-wrap a {
+      color: var(--accent);
+      font-size: 0.9rem;
+    }
+
+    [data-reveal] {
+      opacity: 0;
+      transform: translateY(18px) scale(0.994);
+      transition: opacity 0.52s ease, transform 0.52s ease;
+    }
+
+    [data-reveal].is-visible {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    @media (max-width: 1160px) {
+      .summary-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .module-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 1040px) {
+      .hero-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .feature-row,
+      .feature-row.reverse {
+        grid-template-columns: 1fr;
+      }
+
+      .feature-row.reverse .feature-media,
+      .feature-row.reverse .feature-copy {
+        order: initial;
+      }
+
+      .feature-media {
+        min-height: 260px;
+      }
+    }
+
+    @media (max-width: 820px) {
+      .container {
+        width: min(var(--container-w), calc(100% - 30px));
+      }
+
+      .site-nav {
+        display: none;
+      }
+
+      .metric-grid,
+      .summary-grid,
+      .module-grid,
+      .install-wrap {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        padding-top: 58px;
+      }
+
+      .hero-callout {
+        position: static;
+        width: 100%;
+        margin-top: 14px;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .nav-wrap {
+        min-height: 68px;
+      }
+
+      .hero-actions {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .btn {
+        width: 100%;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html {
+        scroll-behavior: auto;
+      }
+
+      *,
+      *::before,
+      *::after {
+        animation: none !important;
+        transition: none !important;
+      }
+
+      [data-reveal] {
+        opacity: 1 !important;
+        transform: none !important;
+      }
+    }
+  </style>
 </head>
 <body>
   <div class="page-glow page-glow-left" aria-hidden="true"></div>
@@ -17,17 +846,17 @@
 
   <header class="site-header">
     <div class="container nav-wrap">
-      <a class="brand" href="#topo" aria-label="Ferramenta - início">
+      <a class="brand" href="#topo" aria-label="Ferramenta - inicio">
         <span class="brand-dot"></span>
         <span class="brand-name">Ferramenta</span>
       </a>
-      <nav class="site-nav" aria-label="Navegação principal">
-        <a href="#como-funciona">Como funciona</a>
-        <a href="#recursos">Recursos</a>
-        <a href="#instalacao">Instalação</a>
-        <a href="#cta-final">Baixar</a>
+      <nav class="site-nav" aria-label="Navegacao principal">
+        <a href="#resumo">Resumo</a>
+        <a href="#modulos">Modulos</a>
+        <a href="#fluxos">Fluxos</a>
+        <a href="#instalacao">Instalacao</a>
       </nav>
-      <a class="btn btn-sm btn-ghost" href="#cta-final">Baixar</a>
+      <a class="btn btn-ghost" href="#cta-final">Baixar</a>
     </div>
   </header>
 
@@ -35,33 +864,55 @@
     <section class="hero">
       <div class="container hero-grid">
         <div class="hero-copy" data-reveal>
-          <p class="eyebrow">Download oficial</p>
+          <p class="eyebrow">Resumo da plataforma</p>
           <h1>
-            Plataforma desktop para <span class="marker">importação</span>, cálculo de vencimentos e exportação de relatórios.
+            Receita, <span class="marker">operacao</span> e automacao comercial em um desktop unico.
           </h1>
           <p class="hero-text">
-            A Ferramenta consolida operações de Bovespa, BMF e Estruturadas em um fluxo único. O processo cobre
-            leitura de planilhas, vinculação por tags, simulação de cenários e saída final em PDF e Excel.
+            A Ferramenta centraliza importacao de arquivos, consolidacao de receita, calculos de vencimento,
+            historicos operacionais, automacoes com HubXP e Outlook, calendarios de mercado e saida final
+            em cards, PDF e Excel.
           </p>
+          <div class="hero-chip-row" aria-label="Areas cobertas pela Ferramenta">
+            <span class="hero-chip">Receita</span>
+            <span class="hero-chip">Vencimento</span>
+            <span class="hero-chip">HubXP</span>
+            <span class="hero-chip">Outlook</span>
+            <span class="hero-chip">Cards e OCR</span>
+            <span class="hero-chip">Calendarios</span>
+          </div>
           <div class="hero-actions">
-            <a class="btn btn-primary" href="#como-funciona">Ver fluxo</a>
-            <a class="btn btn-secondary" data-download-link href="https://ferramenta-updates-937506434821.s3.sa-east-1.amazonaws.com/win/Ferramenta%20Setup%20Latest.exe" target="_blank" rel="noopener noreferrer">Baixar para Windows</a>
+            <a class="btn btn-primary" href="#modulos">Ver modulos</a>
+            <a
+              class="btn btn-secondary"
+              data-download-link
+              href="https://ferramenta-updates-937506434821.s3.sa-east-1.amazonaws.com/win/Ferramenta%20Setup%20Latest.exe"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Baixar para Windows
+            </a>
           </div>
           <p class="hero-meta">
-            <span id="latest-version">Versão disponível: carregando...</span>
+            <span id="latest-version">Versao disponivel: instalador Latest</span>
             <span class="dot-sep" aria-hidden="true">&middot;</span>
-            <span>Atualização automática após instalação</span>
+            <span>Atualizacao automatica apos a instalacao</span>
           </p>
         </div>
+
         <figure class="hero-media card" data-reveal>
           <img
             src="./assets/landing/hero-dashboard.svg"
-            alt="Visão geral da Ferramenta com módulos e painel de acompanhamento."
+            alt="Painel geral da Ferramenta com modulos de operacao, receita e acompanhamento."
             width="1200"
             height="760"
             fetchpriority="high"
             decoding="async"
           >
+          <figcaption class="hero-callout">
+            <strong>Visao unificada</strong>
+            <p>O produto junta dados, execucao, analise e distribuicao comercial sem depender de varias ferramentas separadas.</p>
+          </figcaption>
         </figure>
       </div>
     </section>
@@ -70,65 +921,71 @@
       <div class="container metric-grid">
         <article class="metric card" data-reveal>
           <p class="metric-value">5</p>
-          <p class="metric-label">módulos de operação</p>
-          <p class="metric-note">Estruturadas, Bovespa, BMF, Manual e Consolidado.</p>
+          <p class="metric-label">frentes principais</p>
+          <p class="metric-note">Receita, operacao, automacao, ferramentas de mercado e plataforma.</p>
         </article>
         <article class="metric card" data-reveal>
-          <p class="metric-value">4</p>
-          <p class="metric-label">etapas no fluxo</p>
-          <p class="metric-note">Importar, validar, analisar cenários e exportar.</p>
+          <p class="metric-value">20+</p>
+          <p class="metric-label">modulos e telas</p>
+          <p class="metric-note">Da importacao central a HubXP, Outlook, vencimento, cards e calendarios.</p>
         </article>
         <article class="metric card" data-reveal>
-          <p class="metric-value">2</p>
-          <p class="metric-label">formatos de saída</p>
-          <p class="metric-note">Relatórios em PDF e planilhas em Excel.</p>
+          <p class="metric-value">1</p>
+          <p class="metric-label">ambiente de trabalho</p>
+          <p class="metric-note">App desktop Windows com API local, persistencia por usuario e auto-update.</p>
         </article>
       </div>
     </section>
 
-    <section id="como-funciona" class="section-block">
+    <section id="resumo" class="section-block">
       <div class="container">
         <header class="section-head" data-reveal>
-          <p class="eyebrow">Como funciona</p>
-          <h2>Fluxo direto, sem etapas ocultas.</h2>
+          <p class="eyebrow">Resumo</p>
+          <h2>A Ferramenta foi organizada para cobrir o ciclo operacional inteiro.</h2>
           <p>
-            O processo operacional foi organizado para reduzir retrabalho: cada passo prepara o próximo, com rastreabilidade
-            por ticker, cliente e vencimento.
+            O produto nao atua so como importador de planilhas. Ele cobre dados de receita, operacao,
+            risco, automacao comercial e distribuicao final, com leitura consolidada por cliente, assessor,
+            broker, conta e periodo.
           </p>
         </header>
-        <div class="steps-grid">
-          <article class="step card" data-reveal>
-            <p class="step-index">01</p>
-            <h3>Instalar e abrir</h3>
-            <p>Baixe o instalador oficial para Windows, execute e inicie a aplicação desktop.</p>
+
+        <div class="summary-grid">
+          <article class="summary-card card" data-reveal>
+            <h3>Receita</h3>
+            <p>Importa Bovespa, BMF, Estruturadas, Comissao XP, lancamentos manuais e consolidado complementar.</p>
           </article>
-          <article class="step card" data-reveal>
-            <p class="step-index">02</p>
-            <h3>Importar planilhas</h3>
-            <p>Carregue arquivos de operações e use validação para inconsistências de estrutura.</p>
+
+          <article class="summary-card card" data-reveal>
+            <h3>Operacao</h3>
+            <p>Trabalha com vencimento, historico, barreiras, posicoes, exercicio, apuracao historica e antecipacao vs CDI.</p>
           </article>
-          <article class="step card" data-reveal>
-            <p class="step-index">03</p>
-            <h3>Organizar por tags</h3>
-            <p>Vincule cliente, assessor e mesa para consolidação e leitura comercial.</p>
+
+          <article class="summary-card card" data-reveal>
+            <h3>Automacao</h3>
+            <p>Executa fluxos com HubXP e Outlook para coleta operacional, monitoramento e envio.</p>
           </article>
-          <article class="step card" data-reveal>
-            <p class="step-index">04</p>
-            <h3>Gerar relatórios</h3>
-            <p>Revise payoff e cenários de vencimento e exporte PDF/Excel com o resultado final.</p>
+
+          <article class="summary-card card" data-reveal>
+            <h3>Mercado</h3>
+            <p>Inclui calendarios de resultados e proventos, spot, dividendos e ferramentas de apoio comercial.</p>
+          </article>
+
+          <article class="summary-card card" data-reveal>
+            <h3>Plataforma</h3>
+            <p>Funciona como app Electron + React com API embarcada, auth, billing, cache local e atualizacao automatica.</p>
           </article>
         </div>
       </div>
     </section>
 
-    <section id="recursos" class="section-block section-features">
+    <section id="modulos" class="section-block section-features">
       <div class="container feature-list">
-        <header class="section-head section-head-features" data-reveal>
-          <p class="eyebrow">Recursos</p>
-          <h2>Blocos operacionais da Ferramenta</h2>
+        <header class="section-head" data-reveal>
+          <p class="eyebrow">Modulos</p>
+          <h2>As funcionalidades foram distribuidas em blocos claros de uso.</h2>
           <p>
-            Cada módulo foi desenhado para cobrir uma etapa objetiva do processo: entrada de dados, classificação,
-            simulação de cenários e emissão de relatórios.
+            A pagina resume os principais grupos que aparecem no produto hoje, com foco no que a ferramenta
+            resolve no dia a dia operacional e comercial.
           </p>
         </header>
 
@@ -136,7 +993,7 @@
           <figure class="feature-media">
             <img
               src="./assets/landing/feature-importacao.svg"
-              alt="Painel de importação e consolidação de dados em planilhas."
+              alt="Painel de importacao e consolidacao de dados."
               width="1200"
               height="760"
               loading="lazy"
@@ -144,21 +1001,21 @@
             >
           </figure>
           <div class="feature-copy">
-            <p class="eyebrow">Importação e consolidação</p>
-            <h3>Leitura de arquivos com validação de estrutura</h3>
-            <p class="feature-intro">
-              A tela de importação identifica campos críticos, consolida resultados por módulo e permite revisar problemas
-              antes da gravação final.
+            <p class="eyebrow">Receita e importacao</p>
+            <h3>Entrada unica para arquivos, conciliacao e consolidacao de base.</h3>
+            <p>
+              A Ferramenta centraliza catalogo de planilhas, selecao de pasta raiz, vinculacao por modulo
+              e importacao das bases que alimentam receita e leitura comercial.
             </p>
             <ul class="feature-points">
-              <li>Validação de colunas obrigatórias antes da importação.</li>
-              <li>Consolidação por módulo e por ativo em uma única leitura.</li>
-              <li>Listagem de inconsistências para ajuste imediato.</li>
+              <li>Importacao de Bovespa, BMF, Estruturadas, XP, Manual e Consolidado.</li>
+              <li>Complemento de meses faltantes e reprocessamento de rejeitados.</li>
+              <li>Edicao de grade, filtros e sincronizacao em lote por modulo.</li>
             </ul>
-            <div class="feature-tags" aria-label="Pontos-chave de importação">
-              <span class="feature-tag">Leitura assistida</span>
-              <span class="feature-tag">Controle de erros</span>
-              <span class="feature-tag">Consolidação única</span>
+            <div class="feature-tags" aria-label="Pontos-chave de receita e importacao">
+              <span class="feature-tag">Importacao central</span>
+              <span class="feature-tag">Receita consolidada</span>
+              <span class="feature-tag">Sync all</span>
             </div>
           </div>
         </article>
@@ -167,7 +1024,7 @@
           <figure class="feature-media">
             <img
               src="./assets/landing/feature-tags.svg"
-              alt="Gestão de tags para vincular cliente, assessor e carteira."
+              alt="Gestao de tags e vinculos por cliente, assessor e carteira."
               width="1200"
               height="760"
               loading="lazy"
@@ -175,21 +1032,21 @@
             >
           </figure>
           <div class="feature-copy">
-            <p class="eyebrow">Tags e vínculos</p>
-            <h3>Classificação operacional por cliente e assessor</h3>
-            <p class="feature-intro">
-              As tags mantêm os dados organizados por responsável e carteira, reduzindo duplicidade e facilitando filtros
-              em painéis de acompanhamento.
+            <p class="eyebrow">Tags e organizacao</p>
+            <h3>Leitura comercial por cliente, assessor, broker, time e carteira.</h3>
+            <p>
+              Tags, vinculos e times mantem a base organizada para filtros globais, metas, senioridade,
+              visao por equipe e reaproveitamento consistente entre modulos.
             </p>
             <ul class="feature-points">
-              <li>Vínculo de clientes, assessores e origem da operação.</li>
-              <li>Padronização de nomenclatura para evitar duplicidades.</li>
-              <li>Filtros rápidos por equipe, carteira e ticker.</li>
+              <li>Import de Tags.xlsx com enriquecimento por codigo de cliente.</li>
+              <li>Hierarquia conta-assessor-broker com ajustes manuais quando necessario.</li>
+              <li>Pastas globais e vinculos de arquivo reaproveitados em varios fluxos.</li>
             </ul>
-            <div class="feature-tags" aria-label="Pontos-chave de tags">
+            <div class="feature-tags" aria-label="Pontos-chave de tags e organizacao">
               <span class="feature-tag">Cliente e assessor</span>
-              <span class="feature-tag">Filtro por carteira</span>
-              <span class="feature-tag">Padrão operacional</span>
+              <span class="feature-tag">Times</span>
+              <span class="feature-tag">Filtro global</span>
             </div>
           </div>
         </article>
@@ -198,7 +1055,7 @@
           <figure class="feature-media">
             <img
               src="./assets/landing/feature-vencimento.svg"
-              alt="Tela de vencimentos com cenários, barreiras e cálculo de payoff."
+              alt="Tela de vencimento e cenarios de payoff."
               width="1200"
               height="760"
               loading="lazy"
@@ -206,21 +1063,21 @@
             >
           </figure>
           <div class="feature-copy">
-            <p class="eyebrow">Vencimentos e cenários</p>
-            <h3>Simulação de payoff com níveis de barreira</h3>
-            <p class="feature-intro">
-              O módulo de vencimento calcula cenários por ativo, strike e barreira para apoiar decisões de rolagem e
-              comunicação com cliente.
+            <p class="eyebrow">Operacao e risco</p>
+            <h3>Vencimento, historico, barreiras, posicoes e leitura financeira.</h3>
+            <p>
+              A camada operacional combina parse de planilhas, cotacoes de mercado e calculos financeiros
+              para revisar payoff, acompanhar estruturas e gerar saida tecnica para o time.
             </p>
             <ul class="feature-points">
-              <li>Tabela de variação com pontos críticos de barreira.</li>
-              <li>Leitura comercial dos cenários de ganho e perda.</li>
-              <li>Cálculo consistente no vencimento para revisão final.</li>
+              <li>Calculo de vencimento com barreira, cupom, bonus e overrides manuais.</li>
+              <li>Historico de operacoes, batimento de barreira e apuracao historica por PDF.</li>
+              <li>Posicoes atuais, previsao de exercicio e comparativos de antecipacao contra CDI.</li>
             </ul>
-            <div class="feature-tags" aria-label="Pontos-chave de vencimento">
-              <span class="feature-tag">Cenários de payoff</span>
-              <span class="feature-tag">Risco controlado</span>
-              <span class="feature-tag">Leitura comercial</span>
+            <div class="feature-tags" aria-label="Pontos-chave de operacao e risco">
+              <span class="feature-tag">Payoff</span>
+              <span class="feature-tag">Historico</span>
+              <span class="feature-tag">Posicoes</span>
             </div>
           </div>
         </article>
@@ -229,7 +1086,7 @@
           <figure class="feature-media">
             <img
               src="./assets/landing/feature-relatorios.svg"
-              alt="Painel de relatórios com exportação para PDF e Excel."
+              alt="Painel com relatorios e distribuicao de saida."
               width="1200"
               height="760"
               loading="lazy"
@@ -237,46 +1094,169 @@
             >
           </figure>
           <div class="feature-copy">
-            <p class="eyebrow">Relatórios</p>
-            <h3>Saída final para PDF e Excel</h3>
-            <p class="feature-intro">
-              Depois da revisão, a ferramenta gera arquivos para distribuição interna e envio ao cliente em formatos
-              prontos para uso.
+            <p class="eyebrow">Automacao e distribuicao</p>
+            <h3>HubXP, Outlook, cards e exportacoes no mesmo fluxo de trabalho.</h3>
+            <p>
+              O produto reune automacao operacional e saida comercial para reduzir troca de contexto:
+              coleta, tratamento, alerta, envio e exportacao vivem no mesmo ambiente.
             </p>
             <ul class="feature-points">
-              <li>Exportação de cards comerciais com payoff e métricas.</li>
-              <li>Planilhas de apoio para controle operacional.</li>
-              <li>Padrão único de apresentação para time e cliente.</li>
+              <li>Central de Ordens e Apuracao Bovespa com sessao compartilhada e replay de fluxo.</li>
+              <li>Outlook com monitor por regras, feed de eventos e envio por conta.</li>
+              <li>Gerador de cards com payoff, OCR, export PNG/PDF e copia pronta para compartilhamento.</li>
             </ul>
-            <div class="feature-tags" aria-label="Pontos-chave de relatórios">
-              <span class="feature-tag">PDF e Excel</span>
-              <span class="feature-tag">Padrão único</span>
-              <span class="feature-tag">Pronto para envio</span>
+            <div class="feature-tags" aria-label="Pontos-chave de automacao e distribuicao">
+              <span class="feature-tag">HubXP</span>
+              <span class="feature-tag">Outlook</span>
+              <span class="feature-tag">Cards e PDF</span>
             </div>
           </div>
         </article>
+
+        <div class="capability-cluster">
+          <header class="section-head" data-reveal>
+            <p class="eyebrow">Capacidades em destaque</p>
+            <h2>Outras areas que completam o produto.</h2>
+            <p>
+              Alem dos blocos principais, a Ferramenta tambem agrega monitoramento, analise comercial
+              e utilitarios rapidos que apoiam a rotina da mesa.
+            </p>
+          </header>
+
+          <div class="module-grid">
+            <article class="module-card card" data-reveal>
+              <h3>Dashboard executivo</h3>
+              <p>Visao consolidada de KPIs, fechamento, metas, ranks e leitura diaria.</p>
+              <ul class="module-points">
+                <li>Resumo de receita por periodo.</li>
+                <li>Heatmap e recortes por broker.</li>
+                <li>Leitura gerencial para acompanhamento.</li>
+              </ul>
+            </article>
+
+            <article class="module-card card" data-reveal>
+              <h3>HubXP</h3>
+              <p>Automacao operacional para coleta, consulta e processamento por conta.</p>
+              <ul class="module-points">
+                <li>Central de ordens com filtros e status.</li>
+                <li>Apuracao Bovespa com progresso e abort.</li>
+                <li>Fluxo manual gravavel para replay.</li>
+              </ul>
+            </article>
+
+            <article class="module-card card" data-reveal>
+              <h3>Outlook</h3>
+              <p>Monitoramento de inbox e envio orientado por regra comercial.</p>
+              <ul class="module-points">
+                <li>Sessao dedicada por usuario.</li>
+                <li>Regras por remetente e assunto.</li>
+                <li>Notificacao desktop e historico.</li>
+              </ul>
+            </article>
+
+            <article class="module-card card" data-reveal>
+              <h3>Mercado e agenda</h3>
+              <p>Fontes de mercado e calendarios integrados ao ambiente.</p>
+              <ul class="module-points">
+                <li>Calendario de resultados BR e EUA.</li>
+                <li>Calendario de proventos por data-com.</li>
+                <li>Spot, dividendos e enriquecimento de dados.</li>
+              </ul>
+            </article>
+
+            <article class="module-card card" data-reveal>
+              <h3>Analise comercial</h3>
+              <p>Ferramentas para leitura de producao, atividade e oportunidade.</p>
+              <ul class="module-points">
+                <li>Clientes operando por janela de atividade.</li>
+                <li>Gap por assessor e produto.</li>
+                <li>Antecipacao comparada ao CDI.</li>
+              </ul>
+            </article>
+
+            <article class="module-card card" data-reveal>
+              <h3>Plataforma desktop</h3>
+              <p>Base tecnica para executar tudo no mesmo ambiente de trabalho.</p>
+              <ul class="module-points">
+                <li>Electron + React com API local embarcada.</li>
+                <li>Persistencia por usuario e cache local.</li>
+                <li>Atualizacao automatica apos instalacao.</li>
+              </ul>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="fluxos" class="section-block">
+      <div class="container">
+        <header class="section-head" data-reveal>
+          <p class="eyebrow">Fluxos</p>
+          <h2>Como a Ferramenta normalmente entra na rotina.</h2>
+          <p>
+            O uso do produto costuma seguir uma sequencia simples: preparar dados, organizar contexto,
+            analisar cenarios, automatizar execucao e distribuir a saida final.
+          </p>
+        </header>
+
+        <div class="flow-grid">
+          <article class="flow-step card" data-reveal>
+            <p class="flow-index">01</p>
+            <h3>Centralizar arquivos</h3>
+            <p>Selecionar pasta raiz, catalogar planilhas e vincular cada base ao modulo correto.</p>
+          </article>
+
+          <article class="flow-step card" data-reveal>
+            <p class="flow-index">02</p>
+            <h3>Enriquecer contexto</h3>
+            <p>Aplicar tags, times, vinculos e filtros globais para leitura comercial consistente.</p>
+          </article>
+
+          <article class="flow-step card" data-reveal>
+            <p class="flow-index">03</p>
+            <h3>Analisar receita e operacao</h3>
+            <p>Revisar receita, vencimento, historico, posicoes, barreiras e indicadores de apoio.</p>
+          </article>
+
+          <article class="flow-step card" data-reveal>
+            <p class="flow-index">04</p>
+            <h3>Executar automacoes</h3>
+            <p>Rodar HubXP, Outlook e monitoramentos para buscar dados ou agir sobre a fila operacional.</p>
+          </article>
+
+          <article class="flow-step card" data-reveal>
+            <p class="flow-index">05</p>
+            <h3>Distribuir a saida</h3>
+            <p>Gerar PDF, Excel, cards e relatorios prontos para time interno ou cliente final.</p>
+          </article>
+        </div>
       </div>
     </section>
 
     <section id="instalacao" class="section-block">
       <div class="container install-wrap card" data-reveal>
-        <div class="install-col">
-          <p class="eyebrow">Requisitos e instalação</p>
-          <h2>Instalação objetiva em ambiente Windows.</h2>
+        <div>
+          <p class="eyebrow">Instalacao</p>
+          <h2>Pagina pensada para apresentar a ferramenta e servir como ponto oficial de download.</h2>
+          <p>
+            O ambiente principal continua sendo desktop Windows. Depois da instalacao, a aplicacao
+            recebe atualizacoes automaticamente e mantem a operacao concentrada em um unico app.
+          </p>
           <ul class="check-list">
-            <li>Windows 10 ou superior (64 bits).</li>
-            <li>Permissão local para executar instalador.</li>
-            <li>Conexão com internet para atualizações.</li>
+            <li>Windows 10 ou superior em 64 bits.</li>
+            <li>Conexao com internet para atualizacao e integracoes.</li>
+            <li>Permissao local para executar o instalador.</li>
           </ul>
         </div>
-        <div class="install-col">
-          <h3>Passos recomendados</h3>
-          <ol class="install-steps">
-            <li>Baixe o instalador oficial no botão de download.</li>
-            <li>Execute o arquivo e conclua a instalação padrão.</li>
-            <li>Abra o app e siga para importação dos dados.</li>
-            <li>As próximas versões são aplicadas automaticamente.</li>
-          </ol>
+
+        <div>
+          <h3>Fluxo recomendado</h3>
+          <ul class="install-steps">
+            <li>Baixar o instalador oficial da Ferramenta.</li>
+            <li>Executar a instalacao padrao no Windows.</li>
+            <li>Abrir o app, configurar pastas e vinculos iniciais.</li>
+            <li>Seguir para importacao, analise e automacao conforme o modulo desejado.</li>
+          </ul>
         </div>
       </div>
     </section>
@@ -284,24 +1264,115 @@
     <section id="cta-final" class="section-block cta-final">
       <div class="container cta-box card" data-reveal>
         <p class="eyebrow">Download</p>
-        <h2>Baixar para Windows</h2>
+        <h2>Baixar a versao desktop da Ferramenta</h2>
         <p>
-          Este é o ponto oficial de distribuição do instalador da Ferramenta.
-          O link abaixo aponta para o artefato Latest no storage de atualização.
+          Esta pagina resume o produto e aponta para o instalador oficial. O app cobre receita,
+          operacao, HubXP, Outlook, analise comercial, calendarios e distribuicao final no mesmo ambiente.
         </p>
-        <a class="btn btn-primary btn-xl" data-download-link href="https://ferramenta-updates-937506434821.s3.sa-east-1.amazonaws.com/win/Ferramenta%20Setup%20Latest.exe" target="_blank" rel="noopener noreferrer">Baixar para Windows</a>
-        <p class="cta-note">Após instalar, o aplicativo verifica e aplica atualizações automaticamente.</p>
+        <a
+          class="btn btn-primary btn-xl"
+          data-download-link
+          href="https://ferramenta-updates-937506434821.s3.sa-east-1.amazonaws.com/win/Ferramenta%20Setup%20Latest.exe"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Baixar para Windows
+        </a>
+        <p class="cta-note">Depois de instalado, o aplicativo verifica e aplica atualizacoes automaticamente.</p>
       </div>
     </section>
   </main>
 
   <footer class="site-footer">
     <div class="container footer-wrap">
-      <p>Ferramenta - Distribuição oficial de instalador Windows.</p>
-      <a data-download-link href="https://ferramenta-updates-937506434821.s3.sa-east-1.amazonaws.com/win/Ferramenta%20Setup%20Latest.exe" target="_blank" rel="noopener noreferrer">Link direto do instalador</a>
+      <p>Ferramenta - resumo do produto e distribuicao oficial do instalador Windows.</p>
+      <a
+        data-download-link
+        href="https://ferramenta-updates-937506434821.s3.sa-east-1.amazonaws.com/win/Ferramenta%20Setup%20Latest.exe"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Link direto do instalador
+      </a>
     </div>
   </footer>
 
-  <script type="module" src="./landing.js"></script>
+  <script>
+    const FALLBACK_DOWNLOAD_URL = 'https://ferramenta-updates-937506434821.s3.sa-east-1.amazonaws.com/win/Ferramenta%20Setup%20Latest.exe'
+
+    const setDownloadLinks = (downloadUrl) => {
+      document.querySelectorAll('[data-download-link]').forEach((link) => {
+        if (link instanceof HTMLAnchorElement) link.href = downloadUrl
+      })
+    }
+
+    const setupReveal = () => {
+      const nodes = Array.from(document.querySelectorAll('[data-reveal]'))
+      if (!nodes.length) return
+
+      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      if (prefersReducedMotion || !('IntersectionObserver' in window)) {
+        nodes.forEach((node) => node.classList.add('is-visible'))
+        return
+      }
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return
+          entry.target.classList.add('is-visible')
+          observer.unobserve(entry.target)
+        })
+      }, {
+        rootMargin: '0px 0px -80px 0px',
+        threshold: 0.12,
+      })
+
+      nodes.forEach((node) => observer.observe(node))
+    }
+
+    const setupActiveNav = () => {
+      const navLinks = Array.from(document.querySelectorAll('.site-nav a[href^="#"]'))
+      if (!navLinks.length) return
+
+      const sectionPairs = navLinks
+        .map((link) => {
+          const href = link.getAttribute('href') || ''
+          const id = href.startsWith('#') ? href.slice(1) : ''
+          const section = id ? document.getElementById(id) : null
+          return section ? { id, section, link } : null
+        })
+        .filter(Boolean)
+
+      if (!sectionPairs.length) return
+
+      const setActiveById = (id) => {
+        sectionPairs.forEach(({ id: sectionId, link }) => {
+          link.classList.toggle('is-active', sectionId === id)
+        })
+      }
+
+      const updateActiveOnScroll = () => {
+        const headerHeight = document.querySelector('.site-header')?.offsetHeight || 72
+        const referenceY = window.scrollY + headerHeight + 40
+        let activeId = sectionPairs[0].id
+
+        for (const { id, section } of sectionPairs) {
+          if (section.offsetTop <= referenceY) activeId = id
+          else break
+        }
+
+        setActiveById(activeId)
+      }
+
+      window.addEventListener('scroll', updateActiveOnScroll, { passive: true })
+      window.addEventListener('resize', updateActiveOnScroll)
+      updateActiveOnScroll()
+    }
+
+    const downloadUrl = FALLBACK_DOWNLOAD_URL
+    setDownloadLinks(downloadUrl)
+    setupReveal()
+    setupActiveNav()
+  </script>
 </body>
 </html>
